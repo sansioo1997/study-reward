@@ -18,6 +18,7 @@ SERVER_ENTRY="$APP_DIR/server/index.js"
 SERVER_PORT="3001"
 NGINX_SITE="/etc/nginx/sites-available/${APP_NAME}"
 NGINX_SITE_LINK="/etc/nginx/sites-enabled/${APP_NAME}"
+NGINX_TEMPLATE="$APP_DIR/nginx.study-reward.conf.example"
 
 echo "🚀 学习加油站 - 部署开始"
 echo "================================"
@@ -30,6 +31,74 @@ fi
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1
+}
+
+install_curl() {
+  if need_cmd curl; then
+    echo "✅ curl 已安装"
+    return
+  fi
+
+  echo "📦 安装 curl..."
+  $SUDO apt-get update
+  $SUDO apt-get install -y curl
+}
+
+render_nginx_config() {
+  if [ ! -f "$NGINX_TEMPLATE" ]; then
+    echo "❌ 未找到 Nginx 模板文件: $NGINX_TEMPLATE"
+    exit 1
+  fi
+
+  sed \
+    -e "s|__CLIENT_DIST_DIR__|$CLIENT_DIST_DIR|g" \
+    -e "s|__SERVER_PORT__|$SERVER_PORT|g" \
+    "$NGINX_TEMPLATE" | $SUDO tee "$NGINX_SITE" >/dev/null
+}
+
+request_code() {
+  local url="$1"
+  local method="${2:-GET}"
+  local body="${3:-}"
+
+  if [ "$method" = "POST" ]; then
+    curl -s -o /dev/null -w "%{http_code}" \
+      -X POST \
+      -H "Content-Type: application/json" \
+      --data "$body" \
+      "$url" || echo "000"
+  else
+    curl -s -o /dev/null -w "%{http_code}" "$url" || echo "000"
+  fi
+}
+
+wait_for_code() {
+  local name="$1"
+  local url="$2"
+  local expected_a="$3"
+  local expected_b="${4:-}"
+  local method="${5:-GET}"
+  local body="${6:-}"
+  local code=""
+
+  for attempt in 1 2 3 4 5 6 7 8; do
+    code="$(request_code "$url" "$method" "$body")"
+    if [ "$code" = "$expected_a" ] || { [ -n "$expected_b" ] && [ "$code" = "$expected_b" ]; }; then
+      echo "✅ $name 正常 (HTTP $code)"
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "❌ $name 检查失败，最后返回 HTTP $code"
+  return 1
+}
+
+run_self_check() {
+  echo "🩺 执行部署后自检..."
+  wait_for_code "前端首页" "http://127.0.0.1/" "200"
+  wait_for_code "后端服务" "http://127.0.0.1:${SERVER_PORT}/api/auth/verify" "200" "403" "POST" '{"passphrase":"health-check"}'
+  wait_for_code "Nginx API 反代" "http://127.0.0.1/api/auth/verify" "200" "403" "POST" '{"passphrase":"health-check"}'
 }
 
 install_nodejs() {
@@ -73,6 +142,7 @@ install_pm2() {
 install_nodejs
 install_nginx
 install_pm2
+install_curl
 
 echo "📦 安装后端依赖..."
 cd "$APP_DIR"
@@ -89,29 +159,7 @@ echo "📁 创建数据目录..."
 mkdir -p "$APP_DIR/server/data"
 
 echo "⚙️ 配置 Nginx..."
-$SUDO tee "$NGINX_SITE" >/dev/null <<EOF
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
-
-    root $CLIENT_DIST_DIR;
-    index index.html;
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:$SERVER_PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-}
-EOF
+render_nginx_config
 
 if [ -f /etc/nginx/sites-enabled/default ]; then
   $SUDO rm -f /etc/nginx/sites-enabled/default
@@ -129,6 +177,7 @@ pm2 describe "$APP_NAME" >/dev/null 2>&1 \
   || pm2 start "$SERVER_ENTRY" --name "$APP_NAME"
 
 pm2 save
+run_self_check
 
 echo "================================"
 echo "✅ 部署完成！"

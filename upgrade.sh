@@ -20,6 +20,7 @@ DB_BACKUP_PATH="$APP_DIR/server/data/study.db.upgrade.bak"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 BRANCH_NAME="${BRANCH_NAME:-main}"
 NGINX_SITE="/etc/nginx/sites-available/${APP_NAME}"
+SERVER_PORT="3001"
 
 echo "🔄 学习加油站 - 开始升级"
 echo "================================"
@@ -39,6 +40,51 @@ require_cmd() {
     echo "❌ 缺少命令: $1"
     exit 1
   fi
+}
+
+request_code() {
+  local url="$1"
+  local method="${2:-GET}"
+  local body="${3:-}"
+
+  if [ "$method" = "POST" ]; then
+    curl -s -o /dev/null -w "%{http_code}" \
+      -X POST \
+      -H "Content-Type: application/json" \
+      --data "$body" \
+      "$url" || echo "000"
+  else
+    curl -s -o /dev/null -w "%{http_code}" "$url" || echo "000"
+  fi
+}
+
+wait_for_code() {
+  local name="$1"
+  local url="$2"
+  local expected_a="$3"
+  local expected_b="${4:-}"
+  local method="${5:-GET}"
+  local body="${6:-}"
+  local code=""
+
+  for attempt in 1 2 3 4 5 6 7 8; do
+    code="$(request_code "$url" "$method" "$body")"
+    if [ "$code" = "$expected_a" ] || { [ -n "$expected_b" ] && [ "$code" = "$expected_b" ]; }; then
+      echo "✅ $name 正常 (HTTP $code)"
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "❌ $name 检查失败，最后返回 HTTP $code"
+  return 1
+}
+
+run_self_check() {
+  echo "🩺 执行升级后自检..."
+  wait_for_code "前端首页" "http://127.0.0.1/" "200"
+  wait_for_code "后端服务" "http://127.0.0.1:${SERVER_PORT}/api/auth/verify" "200" "403" "POST" '{"passphrase":"health-check"}'
+  wait_for_code "Nginx API 反代" "http://127.0.0.1/api/auth/verify" "200" "403" "POST" '{"passphrase":"health-check"}'
 }
 
 hash_file() {
@@ -69,6 +115,7 @@ require_cmd npm
 require_cmd pm2
 require_cmd nginx
 require_cmd sha256sum
+require_cmd curl
 
 if [ ! -d "$APP_DIR/.git" ]; then
   echo "❌ 当前目录不是 Git 仓库: $APP_DIR"
@@ -126,6 +173,7 @@ fi
 $SUDO systemctl reload nginx
 
 restore_db_if_needed
+run_self_check
 
 echo "🧹 清理数据库备份..."
 rm -f "$DB_BACKUP_PATH"
