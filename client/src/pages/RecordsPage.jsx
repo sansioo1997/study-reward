@@ -38,11 +38,38 @@ export default function RecordsPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [lotteryRecord, setLotteryRecord] = useState(null);
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 430,
+    height: typeof window !== 'undefined' ? window.innerHeight : 932,
+  }));
   const { theme, cycleTheme, themeMeta } = useTheme();
 
   useEffect(() => {
     loadRecords();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      const visualViewport = window.visualViewport;
+      setViewport({
+        width: Math.round(visualViewport?.width || window.innerWidth || 430),
+        height: Math.round(visualViewport?.height || window.innerHeight || 932),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.visualViewport?.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+      window.visualViewport?.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
 
   const loadRecords = async () => {
     try {
@@ -71,25 +98,25 @@ export default function RecordsPage({ onBack }) {
   return (
     <div style={styles.page}>
       {/* Header */}
-      <div style={styles.header}>
+      <div style={{ ...styles.header, ...(isCompactViewport ? styles.headerCompact : null) }}>
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onBack}
-          style={styles.backBtn}
+          style={{ ...styles.backBtn, ...(isCompactViewport ? styles.backBtnCompact : null) }}
         >
           <FiArrowLeft size={16} />
           <span>返回</span>
         </motion.button>
-        <div style={styles.headerTitleWrap}>
-          <div style={styles.headerIconWrap}>
+        <div style={{ ...styles.headerTitleWrap, ...(isCompactViewport ? styles.headerTitleWrapCompact : null) }}>
+          <div style={{ ...styles.headerIconWrap, ...(isCompactViewport ? styles.headerIconWrapCompact : null) }}>
             <FiLayers size={16} />
           </div>
-          <h2 style={styles.headerTitle}>打卡记录</h2>
+          <h2 style={{ ...styles.headerTitle, ...(isCompactViewport ? styles.headerTitleCompact : null) }}>打卡记录</h2>
         </div>
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={cycleTheme}
-          style={styles.backBtn}
+          style={{ ...styles.backBtn, ...(isCompactViewport ? styles.backBtnCompact : null) }}
           aria-label="切换配色主题"
         >
           <span>{themeMeta[theme]?.icon || '🎨'}</span>
@@ -100,55 +127,57 @@ export default function RecordsPage({ onBack }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-card"
-        style={styles.heroCard}
+        style={{ ...styles.heroCard, ...(isCompactViewport ? styles.heroCardCompact : null) }}
       >
-        <div style={styles.heroRow}>
-          <div style={styles.heroBadge}>
+        <div style={{ ...styles.heroRow, ...(isCompactViewport ? styles.heroRowCompact : null) }}>
+          <div style={{ ...styles.heroBadge, ...(isCompactViewport ? styles.heroBadgeCompact : null) }}>
             <HiMiniSparkles size={14} />
             <span>记录你的努力轨迹</span>
           </div>
-          <div style={styles.heroTheme}>{themeMeta[theme]?.label}</div>
+          <div style={{ ...styles.heroTheme, ...(isCompactViewport ? styles.heroThemeCompact : null) }}>{themeMeta[theme]?.label}</div>
         </div>
-        <h3 style={styles.heroTitle}>每一次打卡、每一份奖励，都会被认真收藏。</h3>
+        <h3 style={{ ...styles.heroTitle, ...(isCompactViewport ? styles.heroTitleCompact : null) }}>
+          每一次打卡、每一份奖励，都会被认真收藏。
+        </h3>
       </motion.div>
 
       {/* Summary */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={styles.summaryRow}
+        style={{ ...styles.summaryRow, ...(isCompactViewport ? styles.summaryRowCompact : null) }}
       >
-        <div className="glass-card" style={styles.summaryCard}>
-          <div style={styles.summaryIconWrap}>
+        <div className="glass-card" style={{ ...styles.summaryCard, ...(isCompactViewport ? styles.summaryCardCompact : null) }}>
+          <div style={{ ...styles.summaryIconWrap, ...(isCompactViewport ? styles.summaryIconWrapCompact : null) }}>
             <FiClock size={15} />
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>总学习</span>
-          <span style={{ fontSize: 22, fontWeight: 800 }} className="gradient-text">
+          <span style={{ fontSize: isCompactViewport ? 11 : 13, color: 'var(--text-muted)' }}>总学习</span>
+          <span style={{ fontSize: isCompactViewport ? 18 : 22, fontWeight: 800 }} className="gradient-text">
             {totalHours.toFixed(1)}h
           </span>
         </div>
-        <div className="glass-card" style={styles.summaryCard}>
-          <div style={styles.summaryIconWrap}>
+        <div className="glass-card" style={{ ...styles.summaryCard, ...(isCompactViewport ? styles.summaryCardCompact : null) }}>
+          <div style={{ ...styles.summaryIconWrap, ...(isCompactViewport ? styles.summaryIconWrapCompact : null) }}>
             <FiCalendar size={15} />
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>打卡次数</span>
-          <span style={{ fontSize: 22, fontWeight: 800 }} className="gradient-text">
+          <span style={{ fontSize: isCompactViewport ? 11 : 13, color: 'var(--text-muted)' }}>打卡次数</span>
+          <span style={{ fontSize: isCompactViewport ? 18 : 22, fontWeight: 800 }} className="gradient-text">
             {records.length}
           </span>
         </div>
-        <div className="glass-card" style={styles.summaryCard}>
-          <div style={styles.summaryIconWrap}>
+        <div className="glass-card" style={{ ...styles.summaryCard, ...(isCompactViewport ? styles.summaryCardCompact : null) }}>
+          <div style={{ ...styles.summaryIconWrap, ...(isCompactViewport ? styles.summaryIconWrapCompact : null) }}>
             <FiGift size={15} />
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>总奖励</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)' }}>
+          <span style={{ fontSize: isCompactViewport ? 11 : 13, color: 'var(--text-muted)' }}>总奖励</span>
+          <span style={{ fontSize: isCompactViewport ? 18 : 22, fontWeight: 800, color: 'var(--warning)' }}>
             ¥{totalPrize.toFixed(0)}
           </span>
         </div>
       </motion.div>
 
       {/* Records List */}
-      <div style={styles.listContainer}>
+      <div style={{ ...styles.listContainer, ...(isCompactViewport ? styles.listContainerCompact : null) }}>
         {loading ? (
           <motion.div
             animate={{ opacity: [0.3, 1, 0.3] }}
@@ -176,15 +205,16 @@ export default function RecordsPage({ onBack }) {
               className="glass-card"
               style={{
                 ...styles.recordCard,
+                ...(isCompactViewport ? styles.recordCardCompact : null),
                 border: record.is_weekend ? '1px solid rgba(251,191,36,0.2)' : '1px solid rgba(255,255,255,0.06)',
               }}
             >
-              <div style={styles.recordHeader}>
-                <div style={styles.recordDate}>
-                  <span style={styles.dateDay}>
+              <div style={{ ...styles.recordHeader, ...(isCompactViewport ? styles.recordHeaderCompact : null) }}>
+                <div style={{ ...styles.recordDate, ...(isCompactViewport ? styles.recordDateCompact : null) }}>
+                  <span style={{ ...styles.dateDay, ...(isCompactViewport ? styles.dateDayCompact : null) }}>
                     {record.date.split('-')[2]}
                   </span>
-                  <span style={styles.dateMonth}>
+                  <span style={{ ...styles.dateMonth, ...(isCompactViewport ? styles.dateMonthCompact : null) }}>
                     {record.date.split('-')[1]}月
                   </span>
                   {record.is_weekend === 1 && (
@@ -194,11 +224,11 @@ export default function RecordsPage({ onBack }) {
 
                 <div style={styles.recordInfo}>
                   <div style={styles.recordMain}>
-                    <div style={styles.recordTopRow}>
-                      <span style={{ fontSize: 24 }}>{MOOD_EMOJIS[record.mood] || '😊'}</span>
-                      <span style={styles.hoursText}>{record.study_hours}h</span>
+                    <div style={{ ...styles.recordTopRow, ...(isCompactViewport ? styles.recordTopRowCompact : null) }}>
+                      <span style={{ fontSize: isCompactViewport ? 20 : 24 }}>{MOOD_EMOJIS[record.mood] || '😊'}</span>
+                      <span style={{ ...styles.hoursText, ...(isCompactViewport ? styles.hoursTextCompact : null) }}>{record.study_hours}h</span>
                     </div>
-                    <div style={styles.recordMeta}>
+                    <div style={{ ...styles.recordMeta, ...(isCompactViewport ? styles.recordMetaCompact : null) }}>
                       <FiClock size={12} />
                       <span>{record.created_at?.slice(11, 16) || '已记录'}</span>
                     </div>
@@ -207,6 +237,7 @@ export default function RecordsPage({ onBack }) {
                     {record.prize_type && (
                       <span style={{
                         ...styles.prizeTag,
+                        ...(isCompactViewport ? styles.prizeTagCompact : null),
                         color: PRIZE_TAGS[record.prize_type]?.color,
                         background: PRIZE_TAGS[record.prize_type]?.bg,
                       }}>
@@ -216,9 +247,9 @@ export default function RecordsPage({ onBack }) {
                     )}
 
                     {!record.prize_type && (
-                      <span style={styles.pendingTag}>待抽奖</span>
+                      <span style={{ ...styles.pendingTag, ...(isCompactViewport ? styles.prizeTagCompact : null) }}>待抽奖</span>
                     )}
-                    <div style={styles.chevronWrap}>
+                    <div style={{ ...styles.chevronWrap, ...(isCompactViewport ? styles.chevronWrapCompact : null) }}>
                       {selectedRecord?.id === record.id ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
                     </div>
                   </div>
@@ -232,13 +263,13 @@ export default function RecordsPage({ onBack }) {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    style={styles.expandedContent}
+                    style={{ ...styles.expandedContent, ...(isCompactViewport ? styles.expandedContentCompact : null) }}
                   >
                     {record.message && (
-                      <p style={styles.messageText}>💬 {record.message}</p>
+                      <p style={{ ...styles.messageText, ...(isCompactViewport ? styles.messageTextCompact : null) }}>💬 {record.message}</p>
                     )}
                     {record.prize_detail && (
-                      <p style={styles.prizeDetailText}>{record.prize_detail}</p>
+                      <p style={{ ...styles.prizeDetailText, ...(isCompactViewport ? styles.messageTextCompact : null) }}>{record.prize_detail}</p>
                     )}
                     {!record.prize_type && (
                       <button
@@ -247,13 +278,13 @@ export default function RecordsPage({ onBack }) {
                           e.stopPropagation();
                           setLotteryRecord(record);
                         }}
-                        style={styles.reopenLotteryBtn}
+                        style={{ ...styles.reopenLotteryBtn, ...(isCompactViewport ? styles.reopenLotteryBtnCompact : null) }}
                       >
                         <FiRefreshCcw size={14} />
                         补抽这次奖励
                       </button>
                     )}
-                    <p style={styles.timeText}>
+                    <p style={{ ...styles.timeText, ...(isCompactViewport ? styles.timeTextCompact : null) }}>
                       打卡时间: {record.created_at}
                     </p>
                   </motion.div>
@@ -293,6 +324,10 @@ const styles = {
     padding: '16px 20px',
     paddingTop: 'calc(var(--safe-top) + 16px)',
   },
+  headerCompact: {
+    padding: '12px 16px',
+    paddingTop: 'calc(var(--safe-top) + 12px)',
+  },
   backBtn: {
     minWidth: 48,
     padding: '9px 14px',
@@ -308,10 +343,19 @@ const styles = {
     gap: 8,
     boxShadow: 'var(--shadow)',
   },
+  backBtnCompact: {
+    padding: '8px 12px',
+    borderRadius: 12,
+    fontSize: 13,
+    gap: 6,
+  },
   headerTitleWrap: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
+  },
+  headerTitleWrapCompact: {
+    gap: 6,
   },
   headerIconWrap: {
     width: 32,
@@ -323,13 +367,25 @@ const styles = {
     background: 'var(--c-primary-bg)',
     color: 'var(--primary-light)',
   },
+  headerIconWrapCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: 700,
   },
+  headerTitleCompact: {
+    fontSize: 16,
+  },
   heroCard: {
     margin: '0 20px 16px',
     padding: '16px 18px',
+  },
+  heroCardCompact: {
+    margin: '0 16px 10px',
+    padding: '12px 14px',
   },
   heroRow: {
     display: 'flex',
@@ -337,6 +393,9 @@ const styles = {
     alignItems: 'center',
     gap: 12,
     marginBottom: 12,
+  },
+  heroRowCompact: {
+    marginBottom: 8,
   },
   heroBadge: {
     display: 'inline-flex',
@@ -349,10 +408,17 @@ const styles = {
     fontSize: 11,
     fontWeight: 700,
   },
+  heroBadgeCompact: {
+    padding: '5px 9px',
+    fontSize: 10,
+  },
   heroTheme: {
     fontSize: 11,
     fontWeight: 700,
     color: 'var(--text-muted)',
+  },
+  heroThemeCompact: {
+    fontSize: 10,
   },
   heroTitle: {
     fontSize: 16,
@@ -360,11 +426,19 @@ const styles = {
     fontWeight: 700,
     color: 'var(--text-primary)',
   },
+  heroTitleCompact: {
+    fontSize: 14,
+    lineHeight: 1.35,
+  },
   summaryRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: 10,
     padding: '0 20px 16px',
+  },
+  summaryRowCompact: {
+    gap: 8,
+    padding: '0 16px 10px',
   },
   summaryCard: {
     padding: '12px 8px',
@@ -373,6 +447,10 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 4,
+  },
+  summaryCardCompact: {
+    padding: '9px 6px',
+    gap: 3,
   },
   summaryIconWrap: {
     width: 30,
@@ -385,10 +463,19 @@ const styles = {
     background: 'var(--c-primary-bg)',
     marginBottom: 4,
   },
+  summaryIconWrapCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 10,
+    marginBottom: 2,
+  },
   listContainer: {
     flex: 1,
     overflowY: 'auto',
     padding: '0 20px',
+  },
+  listContainerCompact: {
+    padding: '0 16px',
   },
   emptyIconWrap: {
     width: 56,
@@ -407,10 +494,17 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
+  recordCardCompact: {
+    padding: '12px 13px',
+    marginBottom: 8,
+  },
   recordHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: 14,
+  },
+  recordHeaderCompact: {
+    gap: 10,
   },
   recordDate: {
     display: 'flex',
@@ -419,14 +513,23 @@ const styles = {
     minWidth: 44,
     gap: 2,
   },
+  recordDateCompact: {
+    minWidth: 38,
+  },
   dateDay: {
     fontSize: 22,
     fontWeight: 800,
     color: 'var(--primary-light)',
   },
+  dateDayCompact: {
+    fontSize: 19,
+  },
   dateMonth: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  dateMonthCompact: {
+    fontSize: 10,
   },
   weekendBadge: {
     fontSize: 9,
@@ -454,6 +557,9 @@ const styles = {
     alignItems: 'center',
     gap: 8,
   },
+  recordTopRowCompact: {
+    gap: 6,
+  },
   recordMeta: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -461,10 +567,16 @@ const styles = {
     fontSize: 11,
     color: 'var(--text-muted)',
   },
+  recordMetaCompact: {
+    fontSize: 10,
+  },
   hoursText: {
     fontSize: 16,
     fontWeight: 700,
     color: 'var(--text-primary)',
+  },
+  hoursTextCompact: {
+    fontSize: 14,
   },
   recordRight: {
     display: 'flex',
@@ -477,6 +589,11 @@ const styles = {
     fontWeight: 700,
     padding: '4px 10px',
     borderRadius: 8,
+  },
+  prizeTagCompact: {
+    fontSize: 11,
+    padding: '3px 8px',
+    borderRadius: 7,
   },
   pendingTag: {
     fontSize: 12,
@@ -496,17 +613,31 @@ const styles = {
     color: 'var(--text-muted)',
     background: 'rgba(255,255,255,0.05)',
   },
+  chevronWrapCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+  },
   expandedContent: {
     overflow: 'hidden',
     marginTop: 12,
     paddingTop: 12,
     borderTop: '1px solid rgba(255,255,255,0.06)',
   },
+  expandedContentCompact: {
+    marginTop: 10,
+    paddingTop: 10,
+  },
   messageText: {
     fontSize: 13,
     color: 'var(--text-secondary)',
     lineHeight: 1.6,
     marginBottom: 8,
+  },
+  messageTextCompact: {
+    fontSize: 12,
+    lineHeight: 1.5,
+    marginBottom: 7,
   },
   prizeDetailText: {
     fontSize: 13,
@@ -526,8 +657,18 @@ const styles = {
     alignItems: 'center',
     gap: 8,
   },
+  reopenLotteryBtnCompact: {
+    marginBottom: 8,
+    padding: '8px 12px',
+    borderRadius: 10,
+    fontSize: 12,
+    gap: 6,
+  },
   timeText: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  timeTextCompact: {
+    fontSize: 10,
   },
 };

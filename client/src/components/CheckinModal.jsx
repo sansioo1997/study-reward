@@ -33,6 +33,10 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 430,
+    height: typeof window !== 'undefined' ? window.innerHeight : 932,
+  }));
 
   // Update cat mood based on selected mood
   useEffect(() => {
@@ -50,6 +54,29 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
       setCatMood(moodMap[selectedMood] || 'happy');
     }
   }, [selectedMood, setCatMood]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      const visualViewport = window.visualViewport;
+      setViewport({
+        width: Math.round(visualViewport?.width || window.innerWidth || 430),
+        height: Math.round(visualViewport?.height || window.innerHeight || 932),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.visualViewport?.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+      window.visualViewport?.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
 
   const handleSubmit = async () => {
     if (!studyHours || !selectedMood) return;
@@ -80,7 +107,7 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        style={styles.sheet}
+        style={{ ...styles.sheet, ...(isCompactViewport ? styles.sheetCompact : null) }}
       >
         <div style={styles.sheetGlow} />
         <div style={styles.sheetOrbit} />
@@ -88,7 +115,7 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
         <div style={styles.handle} />
 
         {/* Progress */}
-        <div style={styles.progress}>
+        <div style={{ ...styles.progress, ...(isCompactViewport ? styles.progressCompact : null) }}>
           {[1, 2, 3].map(s => (
             <div
               key={s}
@@ -101,14 +128,14 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
           ))}
         </div>
 
-        <div style={styles.stepMeta}>
-          <div style={styles.stepMetaIcon}>
+        <div style={{ ...styles.stepMeta, ...(isCompactViewport ? styles.stepMetaCompact : null) }}>
+          <div style={{ ...styles.stepMetaIcon, ...(isCompactViewport ? styles.stepMetaIconCompact : null) }}>
             {step === 1 ? <FiClock size={14} /> : step === 2 ? <FiHeart size={14} /> : <FiEdit3 size={14} />}
           </div>
-          <span style={styles.stepMetaText}>步骤 {step} / 3</span>
+          <span style={{ ...styles.stepMetaText, ...(isCompactViewport ? styles.stepMetaTextCompact : null) }}>步骤 {step} / 3</span>
         </div>
 
-        <div style={styles.titleBadge}>
+        <div style={{ ...styles.titleBadge, ...(isCompactViewport ? styles.titleBadgeCompact : null) }}>
           <HiMiniSparkles size={13} />
           <span>把今天认真收藏起来</span>
         </div>
@@ -121,17 +148,17 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              style={styles.stepContent}
+              style={{ ...styles.stepContent, ...(isCompactViewport ? styles.stepContentCompact : null) }}
             >
-              <div className="glass-card" style={styles.stepHeroCard}>
-                <div style={styles.stepHeroIcon}>
+              <div className="glass-card" style={{ ...styles.stepHeroCard, ...(isCompactViewport ? styles.stepHeroCardCompact : null) }}>
+                <div style={{ ...styles.stepHeroIcon, ...(isCompactViewport ? styles.stepHeroIconCompact : null) }}>
                   <FiBookOpen size={18} />
                 </div>
-                <h3 style={styles.stepTitle}>今日学习时长</h3>
-                <p style={styles.stepSubtitle}>选择或输入你今天学了多久</p>
+                <h3 style={{ ...styles.stepTitle, ...(isCompactViewport ? styles.stepTitleCompact : null) }}>今日学习时长</h3>
+                <p style={{ ...styles.stepSubtitle, ...(isCompactViewport ? styles.stepSubtitleCompact : null) }}>选择或输入你今天学了多久</p>
               </div>
               
-              <div style={styles.hourGrid}>
+              <div style={{ ...styles.hourGrid, ...(isCompactViewport ? styles.hourGridCompact : null) }}>
                 {HOUR_OPTIONS.map(h => (
                   <motion.button
                     key={h}
@@ -147,17 +174,18 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                         : '1px solid var(--border)',
                       boxShadow: studyHours === h ? '0 12px 26px var(--c-glow)' : 'var(--shadow)',
                       color: studyHours === h ? '#fff' : 'var(--text-primary)',
+                      ...(isCompactViewport ? styles.hourBtnCompact : null),
                     }}
                   >
-                    <span style={{ fontSize: 20, fontWeight: 800 }}>{h}</span>
-                    <span style={{ fontSize: 11, opacity: studyHours === h ? 0.8 : 0.6 }}>小时</span>
+                    <span style={{ fontSize: isCompactViewport ? 18 : 20, fontWeight: 800 }}>{h}</span>
+                    <span style={{ fontSize: isCompactViewport ? 10 : 11, opacity: studyHours === h ? 0.8 : 0.6 }}>小时</span>
                   </motion.button>
                 ))}
               </div>
 
               {/* Custom input */}
-              <div style={styles.customHourRow}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>自定义：</span>
+              <div style={{ ...styles.customHourRow, ...(isCompactViewport ? styles.customHourRowCompact : null) }}>
+                <span style={{ fontSize: isCompactViewport ? 12 : 13, color: 'var(--text-secondary)' }}>自定义：</span>
                 <input
                   type="number"
                   min="0.5"
@@ -166,16 +194,16 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                   value={studyHours || ''}
                   onChange={(e) => setStudyHours(Number(e.target.value))}
                   placeholder="0.5~24"
-                  style={styles.customInput}
+                  style={{ ...styles.customInput, ...(isCompactViewport ? styles.customInputCompact : null) }}
                 />
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>小时</span>
+                <span style={{ fontSize: isCompactViewport ? 12 : 13, color: 'var(--text-muted)' }}>小时</span>
               </div>
 
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 disabled={!studyHours}
                 onClick={() => setStep(2)}
-                style={{ ...styles.nextBtn, opacity: studyHours ? 1 : 0.4 }}
+                style={{ ...styles.nextBtn, ...(isCompactViewport ? styles.nextBtnCompact : null), opacity: studyHours ? 1 : 0.4 }}
               >
                 <span>下一步</span>
                 <FiChevronRight size={16} />
@@ -190,17 +218,17 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              style={styles.stepContent}
+              style={{ ...styles.stepContent, ...(isCompactViewport ? styles.stepContentCompact : null) }}
             >
-              <div className="glass-card" style={styles.stepHeroCard}>
-                <div style={styles.stepHeroIcon}>
+              <div className="glass-card" style={{ ...styles.stepHeroCard, ...(isCompactViewport ? styles.stepHeroCardCompact : null) }}>
+                <div style={{ ...styles.stepHeroIcon, ...(isCompactViewport ? styles.stepHeroIconCompact : null) }}>
                   <FiHeart size={18} />
                 </div>
-                <h3 style={styles.stepTitle}>今日心情</h3>
-                <p style={styles.stepSubtitle}>选一个表情代表你的心情，小猫会跟着变哦</p>
+                <h3 style={{ ...styles.stepTitle, ...(isCompactViewport ? styles.stepTitleCompact : null) }}>今日心情</h3>
+                <p style={{ ...styles.stepSubtitle, ...(isCompactViewport ? styles.stepSubtitleCompact : null) }}>选一个表情代表你的心情，小猫会跟着变哦</p>
               </div>
               
-              <div style={styles.moodGrid}>
+              <div style={{ ...styles.moodGrid, ...(isCompactViewport ? styles.moodGridCompact : null) }}>
                 {MOODS.map(m => (
                   <motion.button
                     key={m.value}
@@ -217,16 +245,17 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                         : '1px solid var(--border)',
                       transform: selectedMood === m.value ? 'scale(1.08)' : 'scale(1)',
                       boxShadow: selectedMood === m.value ? '0 10px 24px var(--c-glow)' : 'var(--shadow)',
+                      ...(isCompactViewport ? styles.moodBtnCompact : null),
                     }}
                   >
-                    <span style={{ fontSize: 32 }}>{m.emoji}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{m.label}</span>
+                    <span style={{ fontSize: isCompactViewport ? 28 : 32 }}>{m.emoji}</span>
+                    <span style={{ fontSize: isCompactViewport ? 10 : 11, color: 'var(--text-secondary)', marginTop: isCompactViewport ? 2 : 4 }}>{m.label}</span>
                   </motion.button>
                 ))}
               </div>
 
-              <div style={styles.btnRow}>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStep(1)} style={styles.backBtn}>
+              <div style={{ ...styles.btnRow, ...(isCompactViewport ? styles.btnRowCompact : null) }}>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStep(1)} style={{ ...styles.backBtn, ...(isCompactViewport ? styles.backBtnCompact : null) }}>
                   <FiChevronLeft size={16} />
                   <span>返回</span>
                 </motion.button>
@@ -234,7 +263,7 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                   whileTap={{ scale: 0.95 }}
                   disabled={!selectedMood}
                   onClick={() => setStep(3)}
-                  style={{ ...styles.nextBtn, flex: 1, opacity: selectedMood ? 1 : 0.4 }}
+                  style={{ ...styles.nextBtn, ...(isCompactViewport ? styles.nextBtnCompact : null), flex: 1, opacity: selectedMood ? 1 : 0.4 }}
                 >
                   <span>下一步</span>
                   <FiChevronRight size={16} />
@@ -250,14 +279,14 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              style={styles.stepContent}
+              style={{ ...styles.stepContent, ...(isCompactViewport ? styles.stepContentCompact : null) }}
             >
-              <div className="glass-card" style={styles.stepHeroCard}>
-                <div style={styles.stepHeroIcon}>
+              <div className="glass-card" style={{ ...styles.stepHeroCard, ...(isCompactViewport ? styles.stepHeroCardCompact : null) }}>
+                <div style={{ ...styles.stepHeroIcon, ...(isCompactViewport ? styles.stepHeroIconCompact : null) }}>
                   <FiMessageCircle size={18} />
                 </div>
-                <h3 style={styles.stepTitle}>写点心里话</h3>
-                <p style={styles.stepSubtitle}>可选，给自己的一段话或今日感想</p>
+                <h3 style={{ ...styles.stepTitle, ...(isCompactViewport ? styles.stepTitleCompact : null) }}>写点心里话</h3>
+                <p style={{ ...styles.stepSubtitle, ...(isCompactViewport ? styles.stepSubtitleCompact : null) }}>可选，给自己的一段话或今日感想</p>
               </div>
               
               <textarea
@@ -265,32 +294,32 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="今天的收获、遇到的困难、想说的话..."
                 maxLength={500}
-                style={styles.textarea}
+                style={{ ...styles.textarea, ...(isCompactViewport ? styles.textareaCompact : null) }}
                 rows={4}
               />
 
               {/* Summary */}
-              <div className="glass-card" style={styles.summary}>
-                <div style={styles.summaryRow}>
-                  <span style={styles.summaryLabel}>
+              <div className="glass-card" style={{ ...styles.summary, ...(isCompactViewport ? styles.summaryCompact : null) }}>
+                <div style={{ ...styles.summaryRow, ...(isCompactViewport ? styles.summaryRowCompact : null) }}>
+                  <span style={{ ...styles.summaryLabel, ...(isCompactViewport ? styles.summaryLabelCompact : null) }}>
                     <FiClock size={14} />
                     <span>学习时长</span>
                   </span>
-                  <span style={{ fontWeight: 700, color: 'var(--primary-light)' }}>{studyHours} 小时</span>
+                  <span style={{ fontWeight: 700, color: 'var(--primary-light)', fontSize: isCompactViewport ? 13 : 14 }}>{studyHours} 小时</span>
                 </div>
-                <div style={styles.summaryRow}>
-                  <span style={styles.summaryLabel}>
+                <div style={{ ...styles.summaryRow, ...(isCompactViewport ? styles.summaryRowCompact : null) }}>
+                  <span style={{ ...styles.summaryLabel, ...(isCompactViewport ? styles.summaryLabelCompact : null) }}>
                     <FiHeart size={14} />
                     <span>今日心情</span>
                   </span>
-                  <span>{MOODS.find(m => m.value === selectedMood)?.emoji} {MOODS.find(m => m.value === selectedMood)?.label}</span>
+                  <span style={{ fontSize: isCompactViewport ? 13 : 14 }}>{MOODS.find(m => m.value === selectedMood)?.emoji} {MOODS.find(m => m.value === selectedMood)?.label}</span>
                 </div>
               </div>
 
               {error && <p style={{ color: 'var(--danger)', fontSize: 13, textAlign: 'center' }}>{error}</p>}
 
-              <div style={styles.btnRow}>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStep(2)} style={styles.backBtn}>
+              <div style={{ ...styles.btnRow, ...(isCompactViewport ? styles.btnRowCompact : null) }}>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setStep(2)} style={{ ...styles.backBtn, ...(isCompactViewport ? styles.backBtnCompact : null) }}>
                   <FiChevronLeft size={16} />
                   <span>返回</span>
                 </motion.button>
@@ -300,6 +329,7 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                   disabled={loading}
                   style={{
                     ...styles.submitBtn,
+                    ...(isCompactViewport ? styles.submitBtnCompact : null),
                     opacity: loading ? 0.6 : 1,
                   }}
                 >
@@ -369,6 +399,12 @@ const styles = {
     boxShadow: 'var(--c-shadow-lg)',
     position: 'relative',
   },
+  sheetCompact: {
+    borderRadius: '22px 22px 0 0',
+    padding: '10px 16px 24px',
+    paddingBottom: 'calc(var(--safe-bottom) + 24px)',
+    maxHeight: '88vh',
+  },
   sheetGlow: {
     position: 'absolute',
     right: -20,
@@ -409,6 +445,9 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  progressCompact: {
+    marginBottom: 18,
+  },
   progressDot: {
     height: 8,
     borderRadius: 4,
@@ -427,6 +466,11 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  stepMetaCompact: {
+    marginBottom: 6,
+    padding: '5px 10px',
+    gap: 6,
+  },
   stepMetaIcon: {
     width: 24,
     height: 24,
@@ -437,10 +481,17 @@ const styles = {
     background: 'var(--c-primary-bg)',
     color: 'var(--primary-light)',
   },
+  stepMetaIconCompact: {
+    width: 20,
+    height: 20,
+  },
   stepMetaText: {
     fontSize: 12,
     color: 'var(--text-secondary)',
     fontWeight: 700,
+  },
+  stepMetaTextCompact: {
+    fontSize: 11,
   },
   titleBadge: {
     display: 'inline-flex',
@@ -457,6 +508,11 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  titleBadgeCompact: {
+    marginBottom: 10,
+    padding: '6px 10px',
+    fontSize: 10,
+  },
   stepContent: {
     display: 'flex',
     flexDirection: 'column',
@@ -464,12 +520,19 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  stepContentCompact: {
+    gap: 12,
+  },
   stepHeroCard: {
     padding: '16px 16px 14px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 6,
+  },
+  stepHeroCardCompact: {
+    padding: '12px 12px 11px',
+    gap: 4,
   },
   stepHeroIcon: {
     width: 38,
@@ -482,11 +545,19 @@ const styles = {
     color: '#fff',
     boxShadow: '0 10px 24px var(--c-glow)',
   },
+  stepHeroIconCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+  },
   stepTitle: {
     fontSize: 21,
     fontWeight: 800,
     textAlign: 'center',
     color: 'var(--text-primary)',
+  },
+  stepTitleCompact: {
+    fontSize: 18,
   },
   stepSubtitle: {
     fontSize: 13,
@@ -494,10 +565,17 @@ const styles = {
     textAlign: 'center',
     lineHeight: 1.55,
   },
+  stepSubtitleCompact: {
+    fontSize: 12,
+    lineHeight: 1.4,
+  },
   hourGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(5, 1fr)',
     gap: 8,
+  },
+  hourGridCompact: {
+    gap: 6,
   },
   hourBtn: {
     padding: '12px 4px',
@@ -509,11 +587,18 @@ const styles = {
     transition: 'all 0.2s',
     backdropFilter: 'blur(10px)',
   },
+  hourBtnCompact: {
+    padding: '10px 4px',
+    borderRadius: 12,
+  },
   customHourRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     justifyContent: 'center',
+  },
+  customHourRowCompact: {
+    gap: 6,
   },
   customInput: {
     width: 80,
@@ -525,10 +610,19 @@ const styles = {
     fontSize: 16,
     textAlign: 'center',
   },
+  customInputCompact: {
+    width: 72,
+    padding: '7px 10px',
+    borderRadius: 9,
+    fontSize: 14,
+  },
   moodGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: 10,
+  },
+  moodGridCompact: {
+    gap: 8,
   },
   moodBtn: {
     padding: '12px 4px',
@@ -538,6 +632,10 @@ const styles = {
     alignItems: 'center',
     transition: 'all 0.2s',
     backdropFilter: 'blur(8px)',
+  },
+  moodBtnCompact: {
+    padding: '10px 4px',
+    borderRadius: 14,
   },
   textarea: {
     width: '100%',
@@ -551,11 +649,21 @@ const styles = {
     resize: 'none',
     boxShadow: 'var(--shadow)',
   },
+  textareaCompact: {
+    padding: '12px 14px',
+    borderRadius: 14,
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
   summary: {
     padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
+  },
+  summaryCompact: {
+    padding: '12px 14px',
+    gap: 8,
   },
   summaryRow: {
     display: 'flex',
@@ -564,15 +672,25 @@ const styles = {
     fontSize: 14,
     color: 'var(--text-secondary)',
   },
+  summaryRowCompact: {
+    fontSize: 13,
+  },
   summaryLabel: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
   },
+  summaryLabelCompact: {
+    gap: 5,
+  },
   btnRow: {
     display: 'flex',
     gap: 10,
     marginTop: 4,
+  },
+  btnRowCompact: {
+    gap: 8,
+    marginTop: 2,
   },
   nextBtn: {
     padding: '14px 24px',
@@ -589,6 +707,12 @@ const styles = {
     gap: 8,
     boxShadow: '0 10px 26px var(--c-glow)',
   },
+  nextBtnCompact: {
+    padding: '12px 18px',
+    borderRadius: 12,
+    fontSize: 14,
+    gap: 6,
+  },
   backBtn: {
     padding: '14px 18px',
     borderRadius: 14,
@@ -601,6 +725,11 @@ const styles = {
     alignItems: 'center',
     gap: 6,
     boxShadow: 'var(--shadow)',
+  },
+  backBtnCompact: {
+    padding: '12px 14px',
+    borderRadius: 12,
+    fontSize: 13,
   },
   submitBtn: {
     flex: 1,
@@ -615,5 +744,11 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  submitBtnCompact: {
+    padding: '12px 18px',
+    borderRadius: 12,
+    fontSize: 14,
+    gap: 6,
   },
 };

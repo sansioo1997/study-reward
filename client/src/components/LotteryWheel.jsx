@@ -43,6 +43,10 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
   const [slotValues, setSlotValues] = useState([0, 0, 0]);
   const [confettiParticles, setConfettiParticles] = useState([]);
   const [spinStage, setSpinStage] = useState(SPIN_STAGES[0]);
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 430,
+    height: typeof window !== 'undefined' ? window.innerHeight : 932,
+  }));
   const spinTimers = useRef([]);
 
   const fireConfetti = useCallback(() => {
@@ -127,7 +131,29 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
 
   useEffect(() => () => spinTimers.current.forEach((timer) => clearInterval(timer)), []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      const visualViewport = window.visualViewport;
+      setViewport({
+        width: Math.round(visualViewport?.width || window.innerWidth || 430),
+        height: Math.round(visualViewport?.height || window.innerHeight || 932),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.visualViewport?.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+      window.visualViewport?.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
   const canClose = phase !== 'spinning';
+  const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
 
   return (
     <motion.div
@@ -147,7 +173,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 40 }}
         transition={{ type: 'spring', damping: 20 }}
-        style={styles.container}
+        style={{ ...styles.container, ...(isCompactViewport ? styles.containerCompact : null) }}
       >
         <div style={styles.panelGlow} />
         <div style={styles.panelOrbit} />
@@ -159,6 +185,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
           disabled={!canClose}
           style={{
             ...styles.closeIconBtn,
+            ...(isCompactViewport ? styles.closeIconBtnCompact : null),
             opacity: canClose ? 1 : 0.45,
             cursor: canClose ? 'pointer' : 'not-allowed',
           }}
@@ -191,41 +218,41 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              style={styles.phaseContent}
+              style={{ ...styles.phaseContent, ...(isCompactViewport ? styles.phaseContentCompact : null) }}
             >
-              <div style={styles.topBadge}>
+              <div style={{ ...styles.topBadge, ...(isCompactViewport ? styles.topBadgeCompact : null) }}>
                 <HiMiniSparkles size={14} />
                 <span>{isWeekend ? '周末加码好运' : '今日幸运时刻'}</span>
               </div>
 
-              <div style={styles.introIconWrap}>
+              <div style={{ ...styles.introIconWrap, ...(isCompactViewport ? styles.introIconWrapCompact : null) }}>
                 <motion.div
                   animate={{ scale: [1, 1.12, 1], rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  style={styles.introIcon}
+                  style={{ ...styles.introIcon, ...(isCompactViewport ? styles.introIconCompact : null) }}
                 >
                   <HiMiniSparkles size={30} />
                 </motion.div>
               </div>
 
-              <h2 style={styles.title}>{isWeekend ? '周末特别抽奖' : '打卡抽奖时间'}</h2>
-              <p style={styles.subtitle}>
+              <h2 style={{ ...styles.title, ...(isCompactViewport ? styles.titleCompact : null) }}>{isWeekend ? '周末特别抽奖' : '打卡抽奖时间'}</h2>
+              <p style={{ ...styles.subtitle, ...(isCompactViewport ? styles.subtitleCompact : null) }}>
                 {isWeekend ? '周末也坚持学习，奖励池已经悄悄偏向你。' : '今天的努力已存档，来收下属于你的好运吧。'}
               </p>
 
-              <div style={styles.prizePool}>
+              <div style={{ ...styles.prizePool, ...(isCompactViewport ? styles.prizePoolCompact : null) }}>
                 {PRIZE_PREVIEW.map((item) => (
-                  <div key={item.label} style={styles.poolItem}>
-                    <div style={styles.poolItemIcon}>
+                  <div key={item.label} style={{ ...styles.poolItem, ...(isCompactViewport ? styles.poolItemCompact : null) }}>
+                    <div style={{ ...styles.poolItemIcon, ...(isCompactViewport ? styles.poolItemIconCompact : null) }}>
                       <item.icon size={16} />
                     </div>
-                    <span style={styles.poolItemTitle}>{item.label}</span>
-                    <span style={styles.poolItemDetail}>{item.detail}</span>
+                    <span style={{ ...styles.poolItemTitle, ...(isCompactViewport ? styles.poolItemTitleCompact : null) }}>{item.label}</span>
+                    <span style={{ ...styles.poolItemDetail, ...(isCompactViewport ? styles.poolItemDetailCompact : null) }}>{item.detail}</span>
                   </div>
                 ))}
               </div>
 
-              <motion.button whileTap={{ scale: 0.94 }} onClick={startSpin} style={styles.spinBtn}>
+              <motion.button whileTap={{ scale: 0.94 }} onClick={startSpin} style={{ ...styles.spinBtn, ...(isCompactViewport ? styles.spinBtnCompact : null) }}>
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ duration: 0.6, repeat: Infinity }}
@@ -245,22 +272,22 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               key="spinning"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              style={styles.phaseContent}
+              style={{ ...styles.phaseContent, ...(isCompactViewport ? styles.phaseContentCompact : null) }}
             >
-              <div style={styles.topBadge}>
+              <div style={{ ...styles.topBadge, ...(isCompactViewport ? styles.topBadgeCompact : null) }}>
                 <HiMiniSparkles size={14} />
                 <span>{spinStage}</span>
               </div>
 
-              <h3 style={styles.spinningTitle}>幸运转盘运转中</h3>
+              <h3 style={{ ...styles.spinningTitle, ...(isCompactViewport ? styles.spinningTitleCompact : null) }}>幸运转盘运转中</h3>
 
-              <div style={styles.slotMachineWrap}>
+              <div style={{ ...styles.slotMachineWrap, ...(isCompactViewport ? styles.slotMachineWrapCompact : null) }}>
                 <div style={styles.slotMachineGlow} />
-                <div style={styles.slotMachine}>
+                <div style={{ ...styles.slotMachine, ...(isCompactViewport ? styles.slotMachineCompact : null) }}>
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      style={styles.slotWindow}
+                      style={{ ...styles.slotWindow, ...(isCompactViewport ? styles.slotWindowCompact : null) }}
                       animate={{
                         y: [0, i % 2 === 0 ? -4 : 4, 0],
                         boxShadow: [
@@ -280,7 +307,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                       >
                         {(() => {
                           const SlotIcon = SLOT_ITEMS[slotValues[i]].icon;
-                          return <SlotIcon size={40} color={SLOT_ITEMS[slotValues[i]].color} />;
+                          return <SlotIcon size={isCompactViewport ? 34 : 40} color={SLOT_ITEMS[slotValues[i]].color} />;
                         })()}
                       </motion.span>
                     </motion.div>
@@ -288,7 +315,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                 </div>
               </div>
 
-              <div style={styles.progressDots}>
+              <div style={{ ...styles.progressDots, ...(isCompactViewport ? styles.progressDotsCompact : null) }}>
                 {[0, 1, 2].map((index) => (
                   <motion.div
                     key={index}
@@ -302,7 +329,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               <motion.p
                 animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{ duration: 1, repeat: Infinity }}
-                style={styles.spinningHint}
+                style={{ ...styles.spinningHint, ...(isCompactViewport ? styles.spinningHintCompact : null) }}
               >
                 好运会一点点停在正确的位置
               </motion.p>
@@ -315,9 +342,9 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: 'spring', bounce: 0.4 }}
-              style={styles.phaseContent}
+              style={{ ...styles.phaseContent, ...(isCompactViewport ? styles.phaseContentCompact : null) }}
             >
-              <div style={styles.topBadge}>
+              <div style={{ ...styles.topBadge, ...(isCompactViewport ? styles.topBadgeCompact : null) }}>
                 <FiCheckCircle size={14} />
                 <span>奖励已解锁</span>
               </div>
@@ -327,16 +354,17 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                 transition={{ duration: 1.8, repeat: Infinity }}
                 style={{
                   ...styles.prizeIcon,
+                  ...(isCompactViewport ? styles.prizeIconCompact : null),
                   background: PRIZE_COLORS[prize.prizeType]?.bg || PRIZE_COLORS.cash.bg,
                 }}
               >
                 {(() => {
                   const PrizeIcon = PRIZE_COLORS[prize.prizeType]?.icon || FiGift;
-                  return <PrizeIcon size={44} />;
+                  return <PrizeIcon size={isCompactViewport ? 38 : 44} />;
                 })()}
               </motion.div>
 
-              <motion.h2 initial={{ y: 20 }} animate={{ y: 0 }} style={styles.prizeTitle}>
+              <motion.h2 initial={{ y: 20 }} animate={{ y: 0 }} style={{ ...styles.prizeTitle, ...(isCompactViewport ? styles.prizeTitleCompact : null) }}>
                 {prize.prizeType === 'ultimate' ? '神秘大礼已揭晓'
                   : prize.prizeType === 'custom' ? '心愿奖励已命中'
                   : prize.prizeType === 'blindbox' ? '惊喜盲盒到手'
@@ -347,7 +375,7 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                style={styles.prizeDetail}
+                style={{ ...styles.prizeDetail, ...(isCompactViewport ? styles.prizeDetailCompact : null) }}
               >
                 {prize.prizeDetail}
               </motion.p>
@@ -357,14 +385,14 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.5, type: 'spring' }}
-                  style={styles.amountBadge}
+                  style={{ ...styles.amountBadge, ...(isCompactViewport ? styles.amountBadgeCompact : null) }}
                 >
-                  <span style={styles.amountUnit}>¥</span>
+                  <span style={{ ...styles.amountUnit, ...(isCompactViewport ? styles.amountUnitCompact : null) }}>¥</span>
                   <span>{prize.amount}</span>
                 </motion.div>
               )}
 
-              <motion.button whileTap={{ scale: 0.95 }} onClick={onClose} style={styles.closeBtn}>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={onClose} style={{ ...styles.closeBtn, ...(isCompactViewport ? styles.closeBtnCompact : null) }}>
                 <FiGift size={16} />
                 <span>收下奖励</span>
               </motion.button>
@@ -424,6 +452,12 @@ const styles = {
     boxShadow: 'var(--c-shadow-lg)',
     backdropFilter: 'blur(24px)',
   },
+  containerCompact: {
+    maxWidth: 360,
+    borderRadius: 24,
+    padding: '24px 18px',
+    minHeight: 380,
+  },
   panelGlow: {
     position: 'absolute',
     inset: 'auto auto -80px -40px',
@@ -454,6 +488,9 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  phaseContentCompact: {
+    gap: 10,
+  },
   topBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -466,6 +503,10 @@ const styles = {
     fontWeight: 700,
     border: '1px solid var(--c-border)',
   },
+  topBadgeCompact: {
+    padding: '6px 10px',
+    fontSize: 10,
+  },
   introIconWrap: {
     width: 84,
     height: 84,
@@ -476,6 +517,11 @@ const styles = {
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid var(--c-border)',
     marginBottom: 2,
+  },
+  introIconWrapCompact: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
   },
   introIcon: {
     width: 58,
@@ -488,16 +534,28 @@ const styles = {
     color: '#fff',
     boxShadow: '0 12px 26px var(--c-glow)',
   },
+  introIconCompact: {
+    width: 50,
+    height: 50,
+    borderRadius: 18,
+  },
   title: {
     fontSize: 24,
     fontWeight: 800,
     marginTop: 4,
     color: 'var(--text-primary)',
   },
+  titleCompact: {
+    fontSize: 20,
+  },
   subtitle: {
     fontSize: 14,
     color: 'var(--text-secondary)',
     lineHeight: 1.6,
+  },
+  subtitleCompact: {
+    fontSize: 13,
+    lineHeight: 1.45,
   },
   prizePool: {
     display: 'grid',
@@ -506,6 +564,11 @@ const styles = {
     marginTop: 6,
     marginBottom: 10,
     width: '100%',
+  },
+  prizePoolCompact: {
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
   },
   poolItem: {
     display: 'flex',
@@ -520,6 +583,12 @@ const styles = {
     minHeight: 98,
     backdropFilter: 'blur(10px)',
   },
+  poolItemCompact: {
+    padding: '10px 8px',
+    borderRadius: 16,
+    minHeight: 88,
+    gap: 4,
+  },
   poolItemIcon: {
     width: 36,
     height: 36,
@@ -530,15 +599,27 @@ const styles = {
     justifyContent: 'center',
     color: 'var(--primary-light)',
   },
+  poolItemIconCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+  },
   poolItemTitle: {
     fontSize: 13,
     fontWeight: 700,
     color: 'var(--text-primary)',
   },
+  poolItemTitleCompact: {
+    fontSize: 12,
+  },
   poolItemDetail: {
     fontSize: 11,
     lineHeight: 1.45,
     color: 'var(--text-muted)',
+  },
+  poolItemDetailCompact: {
+    fontSize: 10,
+    lineHeight: 1.35,
   },
   spinBtn: {
     marginTop: 8,
@@ -553,6 +634,12 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 8,
+  },
+  spinBtnCompact: {
+    marginTop: 6,
+    padding: '13px 28px',
+    borderRadius: 16,
+    fontSize: 15,
   },
   spinBtnIcon: {
     display: 'inline-flex',
@@ -576,11 +663,20 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  closeIconBtnCompact: {
+    top: 14,
+    right: 14,
+    width: 34,
+    height: 34,
+  },
   spinningTitle: {
     fontSize: 22,
     fontWeight: 800,
     color: 'var(--text-primary)',
     marginTop: 2,
+  },
+  spinningTitleCompact: {
+    fontSize: 19,
   },
   slotMachineWrap: {
     width: '100%',
@@ -591,6 +687,11 @@ const styles = {
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid var(--c-border)',
     overflow: 'hidden',
+  },
+  slotMachineWrapCompact: {
+    marginTop: 6,
+    padding: '14px 10px',
+    borderRadius: 20,
   },
   slotMachineGlow: {
     position: 'absolute',
@@ -607,6 +708,9 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
+  slotMachineCompact: {
+    gap: 10,
+  },
   slotWindow: {
     width: 82,
     height: 94,
@@ -619,6 +723,11 @@ const styles = {
     overflow: 'hidden',
     backdropFilter: 'blur(10px)',
   },
+  slotWindowCompact: {
+    width: 70,
+    height: 82,
+    borderRadius: 16,
+  },
   slotIcon: {
     fontSize: 48,
     display: 'block',
@@ -629,6 +738,9 @@ const styles = {
     alignItems: 'center',
     gap: 8,
     marginTop: 16,
+  },
+  progressDotsCompact: {
+    marginTop: 12,
   },
   progressDot: {
     width: 8,
@@ -641,6 +753,10 @@ const styles = {
     color: 'var(--text-secondary)',
     marginTop: 4,
   },
+  spinningHintCompact: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   prizeIcon: {
     width: 102,
     height: 102,
@@ -650,6 +766,10 @@ const styles = {
     justifyContent: 'center',
     boxShadow: '0 16px 44px var(--c-glow)',
   },
+  prizeIconCompact: {
+    width: 88,
+    height: 88,
+  },
   prizeTitle: {
     fontSize: 24,
     fontWeight: 900,
@@ -657,11 +777,19 @@ const styles = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   },
+  prizeTitleCompact: {
+    fontSize: 21,
+  },
   prizeDetail: {
     fontSize: 15,
     color: 'var(--text-secondary)',
     lineHeight: 1.6,
     padding: '0 8px',
+  },
+  prizeDetailCompact: {
+    fontSize: 13,
+    lineHeight: 1.45,
+    padding: '0 4px',
   },
   amountBadge: {
     display: 'inline-flex',
@@ -677,9 +805,17 @@ const styles = {
     background: 'rgba(251,191,36,0.1)',
     border: '1px solid rgba(251,191,36,0.22)',
   },
+  amountBadgeCompact: {
+    padding: '8px 15px',
+    fontSize: 28,
+  },
   amountUnit: {
     fontSize: 18,
     marginTop: 6,
+  },
+  amountUnitCompact: {
+    fontSize: 16,
+    marginTop: 4,
   },
   closeBtn: {
     marginTop: 16,
@@ -693,6 +829,13 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 8,
+  },
+  closeBtnCompact: {
+    marginTop: 12,
+    padding: '12px 24px',
+    borderRadius: 14,
+    fontSize: 14,
+    gap: 6,
   },
   errorText: {
     fontSize: 13,
