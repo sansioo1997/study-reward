@@ -14,6 +14,8 @@ set -euo pipefail
 APP_NAME="study-reward"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLIENT_DIR="$APP_DIR/client"
+CLIENT_DIST_DIR="$CLIENT_DIR/dist"
+WEB_ROOT="/var/www/${APP_NAME}"
 SERVER_ENTRY="$APP_DIR/server/index.js"
 DB_PATH="$APP_DIR/server/data/study.db"
 DB_BACKUP_PATH="$APP_DIR/server/data/study.db.upgrade.bak"
@@ -40,6 +42,32 @@ require_cmd() {
     echo "❌ 缺少命令: $1"
     exit 1
   fi
+}
+
+show_failure_diagnostics() {
+  echo ""
+  echo "🔎 附加诊断信息:"
+  echo "---- nginx -t ----"
+  $SUDO nginx -t || true
+  echo "---- systemctl status nginx ----"
+  $SUDO systemctl status nginx --no-pager -l || true
+  echo "---- pm2 status ----"
+  pm2 status || true
+  echo "---- pm2 logs (${APP_NAME}) ----"
+  pm2 logs "$APP_NAME" --lines 40 --nostream || true
+}
+
+sync_frontend_assets() {
+  if [ ! -f "$CLIENT_DIST_DIR/index.html" ]; then
+    echo "❌ 前端构建产物不存在: $CLIENT_DIST_DIR/index.html"
+    exit 1
+  fi
+
+  echo "📤 同步前端静态文件到 $WEB_ROOT ..."
+  $SUDO mkdir -p "$WEB_ROOT"
+  $SUDO rsync -a --delete "$CLIENT_DIST_DIR"/ "$WEB_ROOT"/
+  $SUDO find "$WEB_ROOT" -type d -exec chmod 755 {} \;
+  $SUDO find "$WEB_ROOT" -type f -exec chmod 644 {} \;
 }
 
 request_code() {
@@ -77,6 +105,7 @@ wait_for_code() {
   done
 
   echo "❌ $name 检查失败，最后返回 HTTP $code"
+  show_failure_diagnostics
   return 1
 }
 
@@ -116,6 +145,7 @@ require_cmd pm2
 require_cmd nginx
 require_cmd sha256sum
 require_cmd curl
+require_cmd rsync
 
 if [ ! -d "$APP_DIR/.git" ]; then
   echo "❌ 当前目录不是 Git 仓库: $APP_DIR"
@@ -157,6 +187,8 @@ echo "🔨 重新构建前端..."
 npm run build
 
 cd "$APP_DIR"
+
+sync_frontend_assets
 
 restore_db_if_needed
 

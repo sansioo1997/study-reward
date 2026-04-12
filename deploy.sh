@@ -14,6 +14,7 @@ APP_NAME="study-reward"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLIENT_DIR="$APP_DIR/client"
 CLIENT_DIST_DIR="$CLIENT_DIR/dist"
+WEB_ROOT="/var/www/${APP_NAME}"
 SERVER_ENTRY="$APP_DIR/server/index.js"
 SERVER_PORT="3001"
 NGINX_SITE="/etc/nginx/sites-available/${APP_NAME}"
@@ -44,6 +45,30 @@ install_curl() {
   $SUDO apt-get install -y curl
 }
 
+install_rsync() {
+  if need_cmd rsync; then
+    echo "✅ rsync 已安装"
+    return
+  fi
+
+  echo "📦 安装 rsync..."
+  $SUDO apt-get update
+  $SUDO apt-get install -y rsync
+}
+
+show_failure_diagnostics() {
+  echo ""
+  echo "🔎 附加诊断信息:"
+  echo "---- nginx -t ----"
+  $SUDO nginx -t || true
+  echo "---- systemctl status nginx ----"
+  $SUDO systemctl status nginx --no-pager -l || true
+  echo "---- pm2 status ----"
+  pm2 status || true
+  echo "---- pm2 logs (${APP_NAME}) ----"
+  pm2 logs "$APP_NAME" --lines 40 --nostream || true
+}
+
 render_nginx_config() {
   if [ ! -f "$NGINX_TEMPLATE" ]; then
     echo "❌ 未找到 Nginx 模板文件: $NGINX_TEMPLATE"
@@ -51,9 +76,22 @@ render_nginx_config() {
   fi
 
   sed \
-    -e "s|__CLIENT_DIST_DIR__|$CLIENT_DIST_DIR|g" \
+    -e "s|__CLIENT_DIST_DIR__|$WEB_ROOT|g" \
     -e "s|__SERVER_PORT__|$SERVER_PORT|g" \
     "$NGINX_TEMPLATE" | $SUDO tee "$NGINX_SITE" >/dev/null
+}
+
+sync_frontend_assets() {
+  if [ ! -f "$CLIENT_DIST_DIR/index.html" ]; then
+    echo "❌ 前端构建产物不存在: $CLIENT_DIST_DIR/index.html"
+    exit 1
+  fi
+
+  echo "📤 同步前端静态文件到 $WEB_ROOT ..."
+  $SUDO mkdir -p "$WEB_ROOT"
+  $SUDO rsync -a --delete "$CLIENT_DIST_DIR"/ "$WEB_ROOT"/
+  $SUDO find "$WEB_ROOT" -type d -exec chmod 755 {} \;
+  $SUDO find "$WEB_ROOT" -type f -exec chmod 644 {} \;
 }
 
 request_code() {
@@ -91,6 +129,7 @@ wait_for_code() {
   done
 
   echo "❌ $name 检查失败，最后返回 HTTP $code"
+  show_failure_diagnostics
   return 1
 }
 
@@ -143,6 +182,7 @@ install_nodejs
 install_nginx
 install_pm2
 install_curl
+install_rsync
 
 echo "📦 安装后端依赖..."
 cd "$APP_DIR"
@@ -154,6 +194,8 @@ npm install
 
 echo "🔨 构建前端..."
 npm run build
+
+sync_frontend_assets
 
 echo "📁 创建数据目录..."
 mkdir -p "$APP_DIR/server/data"
