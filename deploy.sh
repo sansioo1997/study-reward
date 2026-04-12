@@ -61,8 +61,20 @@ show_failure_diagnostics() {
   echo "🔎 附加诊断信息:"
   echo "---- nginx -t ----"
   $SUDO nginx -t || true
+  echo "---- nginx worker users ----"
+  ps -eo user=,comm= | awk '$2=="nginx"{print $1}' | sort -u || true
   echo "---- systemctl status nginx ----"
   $SUDO systemctl status nginx --no-pager -l || true
+  echo "---- web root permissions ----"
+  ls -ld "$WEB_ROOT" || true
+  echo "---- index.html permissions ----"
+  ls -l "$WEB_ROOT/index.html" || true
+  if need_cmd namei; then
+    echo "---- index.html path permissions ----"
+    namei -l "$WEB_ROOT/index.html" || true
+  fi
+  echo "---- nginx error.log ----"
+  $SUDO tail -n 80 /var/log/nginx/error.log || true
   echo "---- pm2 status ----"
   pm2 status || true
   echo "---- pm2 logs (${APP_NAME}) ----"
