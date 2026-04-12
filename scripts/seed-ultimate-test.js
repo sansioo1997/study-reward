@@ -22,12 +22,12 @@ async function main() {
   const moods = ['happy', 'excited', 'love', 'proud', 'cuddle'];
   let totalHours = 0;
 
-  for (let i = 19; i >= 1; i -= 1) {
+  for (let i = 24; i >= 1; i -= 1) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
     const date = fmtDate(d);
     const createdAt = fmtTime(new Date(d.getTime() + 12 * 60 * 60 * 1000));
-    const hours = [2, 2.5, 3, 3.5, 4][(19 - i) % 5];
-    const mood = moods[(19 - i) % moods.length];
+    const hours = [2, 2.5, 3, 3.5, 4][(24 - i) % 5];
+    const mood = moods[(24 - i) % moods.length];
     const isWeekend = [0, 6].includes(d.getDay()) ? 1 : 0;
     totalHours += hours;
 
@@ -39,12 +39,12 @@ async function main() {
 
   db.run(
     'UPDATE streak SET current_streak = ?, max_streak = ?, total_days = ?, total_hours = ?, ultimate_prize_claimed = 0 WHERE id = 1',
-    [19, 19, 19, totalHours]
+    [24, 24, 24, totalHours]
   );
 
   const data = db.export();
   fs.writeFileSync(dbPath, Buffer.from(data));
-  console.log(`Seeded 19 consecutive historical checkins, totalHours=${totalHours}. Today remains available.`);
+  console.log(`Seeded 24 consecutive historical checkins, totalHours=${totalHours}. Today remains available.`);
 }
 
 main().catch((error) => {

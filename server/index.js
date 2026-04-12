@@ -164,7 +164,7 @@ function recalculateStreak() {
   const latestDate = checkins[checkins.length - 1].date;
   const gapToToday = diffDays(latestDate, getToday());
   const currentStreak = gapToToday <= 1 ? tailRun : 0;
-  const ultimatePrizeClaimed = currentStreak >= 20 ? (existingStreak?.ultimate_prize_claimed || 0) : 0;
+  const ultimatePrizeClaimed = currentStreak >= 25 ? (existingStreak?.ultimate_prize_claimed || 0) : 0;
 
   runSql(
     'UPDATE streak SET current_streak = ?, max_streak = ?, total_days = ?, total_hours = ?, ultimate_prize_claimed = ? WHERE id = 1',
@@ -340,9 +340,9 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
     
     let prizeType, prizeDetail, amount;
     
-    if ((streak?.current_streak || 0) >= 20 && !streak?.ultimate_prize_claimed) {
+    if ((streak?.current_streak || 0) >= 25 && !streak?.ultimate_prize_claimed) {
       prizeType = 'ultimate';
-      prizeDetail = '神秘大礼已解锁！连续打卡20天达成，值得被好好庆祝。';
+      prizeDetail = '神秘大礼已解锁！连续打卡25天达成，值得被好好庆祝。';
       amount = 2000;
       runSql('UPDATE streak SET ultimate_prize_claimed = 1 WHERE id = 1');
     } else {
@@ -359,8 +359,8 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
       } else {
         prizeType = 'cash';
         const hrs = Number(checkin.study_hours) || 1;
-        const multiplier = 1 + Math.random() * 0.8;
-        amount = Math.max(1, Math.round(20 * hrs * multiplier));
+        const multiplier = 1 + Math.random() * 0.5;
+        amount = Math.max(1, Math.round(15 * hrs * multiplier));
         prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
       }
     }

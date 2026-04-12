@@ -213,7 +213,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
         </motion.div>
 
         {/* Streak progress to ultimate prize */}
-        {stats?.streak?.current_streak > 0 && stats?.streak?.current_streak < 20 && (
+        {stats?.streak?.current_streak > 0 && stats?.streak?.current_streak < 25 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -228,20 +228,20 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>神秘大礼进度</span>
               </div>
-              <span style={styles.streakCount}>{stats.streak.current_streak}/20天</span>
+              <span style={styles.streakCount}>{stats.streak.current_streak}/25天</span>
             </div>
             <div style={styles.progressBar}>
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${(stats.streak.current_streak / 20) * 100}%` }}
+                animate={{ width: `${(stats.streak.current_streak / 25) * 100}%` }}
                 transition={{ duration: 1, delay: 0.5 }}
                 style={styles.progressFill}
               />
             </div>
             <div style={styles.streakFooter}>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>连续打卡20天解锁神秘大礼</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>连续打卡25天解锁神秘大礼</p>
               <span style={styles.streakRemain}>
-                还差 {Math.max(20 - (stats?.streak?.current_streak || 0), 0)} 天
+                还差 {Math.max(25 - (stats?.streak?.current_streak || 0), 0)} 天
               </span>
             </div>
           </motion.div>
