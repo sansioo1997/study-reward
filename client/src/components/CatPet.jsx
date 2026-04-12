@@ -203,15 +203,15 @@ export default function CatPet({ mood = 'idle', onInteract }) {
     }, INTERACTION_SETTLE_MS);
   }, [mood]);
 
-  const handleTouch = useCallback((e) => {
-    e.preventDefault();
+  const handleInteract = useCallback((e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     const nextTapCount = taps + 1;
     setTaps(nextTapCount);
 
     const rect = catRef.current?.getBoundingClientRect();
     if (rect) {
-      const cursorX = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width / 2) - rect.left;
-      const cursorY = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height / 2) - rect.top;
+      const cursorX = (e.clientX || rect.left + rect.width / 2) - rect.left;
+      const cursorY = (e.clientY || rect.top + rect.height / 2) - rect.top;
       const id = Date.now() + Math.random();
 
       setHearts((prev) => [...prev.slice(-10), { id, x: cursorX, y: cursorY }]);
@@ -265,8 +265,7 @@ export default function CatPet({ mood = 'idle', onInteract }) {
 
       <motion.div
         animate={controls}
-        onTouchStart={handleTouch}
-        onClick={handleTouch}
+        onPointerDown={handleInteract}
         style={styles.cat}
       >
         <motion.div
@@ -379,6 +378,7 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',
     padding: '10px 0',
   },
   face: {

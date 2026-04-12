@@ -57,6 +57,10 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
   const [checkinResult, setCheckinResult] = useState(null);
   const [catMood, setCatMood] = useState('idle');
   const [quote, setQuote] = useState(() => getNextQuote());
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 430,
+    height: typeof window !== 'undefined' ? window.innerHeight : 932,
+  }));
   const scrollRef = useRef(null);
   const moodResetTimerRef = useRef(null);
   const { theme, cycleTheme, themeMeta } = useTheme();
@@ -89,6 +93,30 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
 
   useEffect(() => () => clearTimeout(moodResetTimerRef.current), []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      const visualViewport = window.visualViewport;
+      setViewport({
+        width: Math.round(visualViewport?.width || window.innerWidth || 430),
+        height: Math.round(visualViewport?.height || window.innerHeight || 932),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.visualViewport?.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+      window.visualViewport?.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
+  const isUltraCompactViewport = viewport.width <= 375 || viewport.height <= 720;
+
   const holdCelebrationMood = (nextMood, duration = 14000) => {
     clearTimeout(moodResetTimerRef.current);
     setCatMood(nextMood);
@@ -119,18 +147,43 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
 
   return (
     <div style={styles.page} ref={scrollRef}>
-      <div style={styles.scrollContainer}>
+      <div
+        style={{
+          ...styles.scrollContainer,
+          ...(isCompactViewport ? styles.scrollContainerCompact : null),
+          ...(isUltraCompactViewport ? styles.scrollContainerUltraCompact : null),
+        }}
+      >
         {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.headerMain}>
-            <div style={styles.dateBadge}>
+        <div
+          style={{
+            ...styles.header,
+            ...(isCompactViewport ? styles.headerCompact : null),
+          }}
+        >
+          <div
+            style={{
+              ...styles.headerMain,
+              ...(isCompactViewport ? styles.headerMainCompact : null),
+            }}
+          >
+            <div
+              style={{
+                ...styles.dateBadge,
+                ...(isCompactViewport ? styles.dateBadgeCompact : null),
+              }}
+            >
               <HiMiniSparkles size={14} />
               <span>今日学习手账</span>
             </div>
             <motion.h2
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              style={styles.dateText}
+              style={{
+                ...styles.dateText,
+                ...(isCompactViewport ? styles.dateTextCompact : null),
+                ...(isUltraCompactViewport ? styles.dateTextUltraCompact : null),
+              }}
             >
               {dateInfo.month}月{dateInfo.day}日 · 周{dateInfo.weekDay}
             </motion.h2>
@@ -138,16 +191,27 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              style={styles.yearText}
+              style={{
+                ...styles.yearText,
+                ...(isCompactViewport ? styles.yearTextCompact : null),
+              }}
             >
-              {dateInfo.year} · 当前主题 {themeMeta[theme]?.label}
+              {dateInfo.year}
             </motion.p>
           </div>
-          <div style={styles.headerActions}>
+          <div
+            style={{
+              ...styles.headerActions,
+              ...(isCompactViewport ? styles.headerActionsCompact : null),
+            }}
+          >
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={cycleTheme}
-              style={styles.recordBtn}
+              style={{
+                ...styles.recordBtn,
+                ...(isCompactViewport ? styles.recordBtnCompact : null),
+              }}
               aria-label="切换配色主题"
             >
               <span>{themeMeta[theme]?.icon || '🎨'}</span>
@@ -155,7 +219,10 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => onNavigate('records')}
-              style={styles.recordBtn}
+              style={{
+                ...styles.recordBtn,
+                ...(isCompactViewport ? styles.recordBtnCompact : null),
+              }}
             >
               <FiLayers size={18} />
             </motion.button>
@@ -167,26 +234,64 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
           className="glass-card"
-          style={styles.heroCard}
+          style={{
+            ...styles.heroCard,
+            ...(isCompactViewport ? styles.heroCardCompact : null),
+            ...(isUltraCompactViewport ? styles.heroCardUltraCompact : null),
+          }}
         >
           <div style={styles.heroGlow} />
-          <div style={styles.heroTopRow}>
-            <div style={styles.heroLabel}>
+          <div
+            style={{
+              ...styles.heroTopRow,
+              ...(isCompactViewport ? styles.heroTopRowCompact : null),
+            }}
+          >
+            <div
+              style={{
+                ...styles.heroLabel,
+                ...(isCompactViewport ? styles.heroLabelCompact : null),
+              }}
+            >
               <FiMoon size={14} />
               <span>{todayChecked ? '今日记录已完成' : '继续积累今天的微光'}</span>
             </div>
-            <div style={styles.heroThemeBadge}>
+            <div
+              style={{
+                ...styles.heroThemeBadge,
+                ...(isCompactViewport ? styles.heroThemeBadgeCompact : null),
+              }}
+            >
               <span>{themeMeta[theme]?.icon || '🎨'}</span>
               <span>{themeMeta[theme]?.label}</span>
             </div>
           </div>
-          <div style={styles.heroTitleRow}>
-            <div style={styles.heroIconWrap}>
-              <FiBookOpen size={18} />
-            </div>
+          <div
+            style={{
+              ...styles.heroTitleRow,
+              ...(isCompactViewport ? styles.heroTitleRowCompact : null),
+            }}
+          >
             <div>
-              <h3 style={styles.heroTitle}>每一次认真打卡，都在把理想写得更清晰</h3>
-              <p style={styles.heroSubtitle}>保留一点仪式感，让学习更值得期待。</p>
+              <h3
+                style={{
+                  ...styles.heroTitle,
+                  ...(isCompactViewport ? styles.heroTitleCompact : null),
+                  ...(isUltraCompactViewport ? styles.heroTitleUltraCompact : null),
+                }}
+              >
+                每一次认真打卡，都在把理想写得更清晰
+              </h3>
+              {!isUltraCompactViewport && (
+                <p
+                  style={{
+                    ...styles.heroSubtitle,
+                    ...(isCompactViewport ? styles.heroSubtitleCompact : null),
+                  }}
+                >
+                  保留一点仪式感，让学习更值得期待。
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -196,56 +301,87 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          style={styles.statsRow}
+          style={{
+            ...styles.statsRow,
+            ...(isCompactViewport ? styles.statsRowCompact : null),
+          }}
         >
           {statCards.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.key} className="glass-card" style={styles.statCard}>
-                <div style={{ ...styles.statIconWrap, color: item.accent }}>
+              <div
+                key={item.key}
+                className="glass-card"
+                style={{
+                  ...styles.statCard,
+                  ...(isCompactViewport ? styles.statCardCompact : null),
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.statIconWrap,
+                    ...(isCompactViewport ? styles.statIconWrapCompact : null),
+                    color: item.accent,
+                  }}
+                >
                   <Icon size={16} />
                 </div>
-                <span style={styles.statValue}>{item.value}</span>
-                <span style={styles.statLabel}>{item.label}</span>
+                <span
+                  style={{
+                    ...styles.statValue,
+                    ...(isCompactViewport ? styles.statValueCompact : null),
+                  }}
+                >
+                  {item.value}
+                </span>
+                <span
+                  style={{
+                    ...styles.statLabel,
+                    ...(isCompactViewport ? styles.statLabelCompact : null),
+                  }}
+                >
+                  {item.label}
+                </span>
               </div>
             );
           })}
         </motion.div>
 
         {/* Streak progress to ultimate prize */}
-        {stats?.streak?.current_streak > 0 && stats?.streak?.current_streak < 25 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-card"
-            style={styles.streakCard}
-          >
-            <div style={styles.streakHeader}>
-              <div style={styles.streakTitleWrap}>
-                <div style={styles.streakIconWrap}>
-                  <FiGift size={14} />
-                </div>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>神秘大礼进度</span>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="glass-card"
+          style={{
+            ...styles.streakCard,
+            ...(isCompactViewport ? styles.streakCardCompact : null),
+          }}
+        >
+          <div style={styles.streakHeader}>
+            <div style={styles.streakTitleWrap}>
+              <div style={styles.streakIconWrap}>
+                <FiGift size={14} />
               </div>
-              <span style={styles.streakCount}>{stats.streak.current_streak}/25天</span>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>神秘大礼进度</span>
             </div>
-            <div style={styles.progressBar}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${(stats.streak.current_streak / 25) * 100}%` }}
-                transition={{ duration: 1, delay: 0.5 }}
-                style={styles.progressFill}
-              />
-            </div>
-            <div style={styles.streakFooter}>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>连续打卡25天解锁神秘大礼</p>
-              <span style={styles.streakRemain}>
-                还差 {Math.max(25 - (stats?.streak?.current_streak || 0), 0)} 天
-              </span>
-            </div>
-          </motion.div>
-        )}
+            <span style={styles.streakCount}>{stats?.streak?.current_streak || 0}/25天</span>
+          </div>
+          <div style={styles.progressBar}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(((stats?.streak?.current_streak || 0) / 25) * 100, 100)}%` }}
+              transition={{ duration: 1, delay: 0.5 }}
+              style={styles.progressFill}
+            />
+          </div>
+          <div style={styles.streakFooter}>
+            <p style={{ fontSize: isCompactViewport ? 10 : 11, color: 'var(--text-muted)' }}>连续打卡25天解锁神秘大礼</p>
+            <span style={styles.streakRemain}>
+              {stats?.streak?.current_streak >= 25 ? '已达成目标' : `还差 ${Math.max(25 - (stats?.streak?.current_streak || 0), 0)} 天`}
+            </span>
+          </div>
+        </motion.div>
 
         {/* Quote */}
         <motion.div
@@ -253,15 +389,37 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           className="glass-card"
-          style={styles.quoteCard}
+          style={{
+            ...styles.quoteCard,
+            ...(isCompactViewport ? styles.quoteCardCompact : null),
+          }}
         >
           <div style={styles.quoteHeader}>
-            <div style={styles.quoteIconWrap}>
+            <div
+              style={{
+                ...styles.quoteIconWrap,
+                ...(isCompactViewport ? styles.quoteIconWrapCompact : null),
+              }}
+            >
               <HiMiniSparkles size={14} />
             </div>
-            <span style={styles.quoteLabel}>今日灵感</span>
+            <span
+              style={{
+                ...styles.quoteLabel,
+                ...(isCompactViewport ? styles.quoteLabelCompact : null),
+              }}
+            >
+              今日灵感
+            </span>
           </div>
-          <p style={styles.quoteText}>{quote}</p>
+          <p
+            style={{
+              ...styles.quoteText,
+              ...(isCompactViewport ? styles.quoteTextCompact : null),
+            }}
+          >
+            {quote}
+          </p>
         </motion.div>
 
         {/* Cat Pet Area */}
@@ -269,7 +427,11 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4, type: 'spring' }}
-          style={styles.catArea}
+          style={{
+            ...styles.catArea,
+            ...(isCompactViewport ? styles.catAreaCompact : null),
+            ...(isUltraCompactViewport ? styles.catAreaUltraCompact : null),
+          }}
         >
           <CatPet
             mood={catMood}
@@ -282,20 +444,37 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          style={styles.actionArea}
+          style={{
+            ...styles.actionArea,
+            ...(isCompactViewport ? styles.actionAreaCompact : null),
+          }}
         >
           {todayChecked ? (
-            <div style={styles.checkedContainer}>
+            <div
+              style={{
+                ...styles.checkedContainer,
+                ...(isCompactViewport ? styles.checkedContainerCompact : null),
+              }}
+            >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', bounce: 0.5 }}
-                style={styles.checkedBadge}
+                style={{
+                  ...styles.checkedBadge,
+                  ...(isCompactViewport ? styles.checkedBadgeCompact : null),
+                }}
               >
                 <FiCheckCircle size={16} />
                 <span>今日已打卡</span>
               </motion.div>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>
+              <p
+                style={{
+                  fontSize: isCompactViewport ? 12 : 13,
+                  color: 'var(--text-secondary)',
+                  marginTop: isCompactViewport ? 6 : 8,
+                }}
+              >
                 明天继续加油哦！
               </p>
             </div>
@@ -308,14 +487,42 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
                 clearTimeout(moodResetTimerRef.current);
                 setCatMood('excited');
               }}
-              style={styles.checkinBtn}
+              style={{
+                ...styles.checkinBtn,
+                ...(isCompactViewport ? styles.checkinBtnCompact : null),
+                ...(isUltraCompactViewport ? styles.checkinBtnUltraCompact : null),
+              }}
             >
-              <div style={styles.checkinBtnIcon}>
+              <div
+                style={{
+                  ...styles.checkinBtnIcon,
+                  ...(isCompactViewport ? styles.checkinBtnIconCompact : null),
+                }}
+              >
                 <FiBookOpen size={18} />
               </div>
-              <span style={styles.checkinBtnText}>开始打卡</span>
-              <span style={styles.checkinBtnSub}>记录今天的努力</span>
-              <div style={styles.checkinBtnArrow}>
+              <span
+                style={{
+                  ...styles.checkinBtnText,
+                  ...(isCompactViewport ? styles.checkinBtnTextCompact : null),
+                }}
+              >
+                开始打卡
+              </span>
+              <span
+                style={{
+                  ...styles.checkinBtnSub,
+                  ...(isCompactViewport ? styles.checkinBtnSubCompact : null),
+                }}
+              >
+                记录今天的努力
+              </span>
+              <div
+                style={{
+                  ...styles.checkinBtnArrow,
+                  ...(isCompactViewport ? styles.checkinBtnArrowCompact : null),
+                }}
+              >
                 <FiArrowRight size={16} />
               </div>
               <div style={styles.btnShine} />
@@ -352,6 +559,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
 const styles = {
   page: {
     height: '100%',
+    minHeight: '100dvh',
     position: 'relative',
     zIndex: 1,
   },
@@ -361,19 +569,34 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     padding: '12px 18px',
-    paddingTop: 'calc(var(--safe-top) + 12px)',
+    paddingTop: 'max(calc(var(--safe-top) + 12px), 20px)',
     paddingBottom: 'calc(var(--safe-bottom) + 12px)',
+  },
+  scrollContainerCompact: {
+    padding: '10px 16px 12px',
+    paddingTop: 'max(calc(var(--safe-top) + 10px), 16px)',
+  },
+  scrollContainerUltraCompact: {
+    padding: '8px 14px 10px',
+    paddingTop: 'max(calc(var(--safe-top) + 8px), 14px)',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    flexShrink: 0,
+  },
+  headerCompact: {
+    marginBottom: 8,
   },
   headerMain: {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
+  },
+  headerMainCompact: {
+    gap: 4,
   },
   dateBadge: {
     display: 'inline-flex',
@@ -388,9 +611,17 @@ const styles = {
     fontWeight: 700,
     border: '1px solid var(--border)',
   },
+  dateBadgeCompact: {
+    padding: '4px 8px',
+    fontSize: 10,
+    gap: 5,
+  },
   headerActions: {
     display: 'flex',
     gap: 8,
+  },
+  headerActionsCompact: {
+    gap: 6,
   },
   dateText: {
     fontSize: 24,
@@ -398,10 +629,21 @@ const styles = {
     color: 'var(--text-primary)',
     letterSpacing: '-0.02em',
   },
+  dateTextCompact: {
+    fontSize: 21,
+    lineHeight: 1.15,
+  },
+  dateTextUltraCompact: {
+    fontSize: 19,
+  },
   yearText: {
     fontSize: 12,
     color: 'var(--text-muted)',
     marginTop: 2,
+  },
+  yearTextCompact: {
+    fontSize: 11,
+    marginTop: 0,
   },
   recordBtn: {
     width: 42,
@@ -416,11 +658,25 @@ const styles = {
     boxShadow: 'var(--shadow)',
     color: 'var(--text-primary)',
   },
+  recordBtnCompact: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    fontSize: 16,
+  },
   heroCard: {
     position: 'relative',
     overflow: 'hidden',
-    padding: '14px 15px 13px',
-    marginBottom: 10,
+    padding: '12px 14px 11px',
+    marginBottom: 8,
+    flexShrink: 0,
+  },
+  heroCardCompact: {
+    padding: '10px 12px 10px',
+    marginBottom: 6,
+  },
+  heroCardUltraCompact: {
+    padding: '9px 11px 9px',
   },
   heroGlow: {
     position: 'absolute',
@@ -436,17 +692,24 @@ const styles = {
   heroTopRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 10,
     position: 'relative',
     zIndex: 1,
+  },
+  heroTopRowCompact: {
+    gap: 7,
+    marginBottom: 6,
   },
   heroLabel: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
     padding: '5px 9px',
+    flex: 1,
+    minWidth: 0,
     borderRadius: 999,
     background: 'rgba(255,255,255,0.06)',
     border: '1px solid var(--border)',
@@ -454,13 +717,22 @@ const styles = {
     fontSize: 11,
     fontWeight: 600,
   },
+  heroLabelCompact: {
+    padding: '4px 8px',
+    fontSize: 10,
+  },
   heroThemeBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 0,
     color: 'var(--text-muted)',
     fontSize: 11,
     fontWeight: 700,
+  },
+  heroThemeBadgeCompact: {
+    fontSize: 10,
+    gap: 5,
   },
   heroTitleRow: {
     display: 'flex',
@@ -469,17 +741,8 @@ const styles = {
     position: 'relative',
     zIndex: 1,
   },
-  heroIconWrap: {
-    width: 34,
-    height: 34,
-    flexShrink: 0,
-    borderRadius: 12,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
-    color: '#fff',
-    boxShadow: '0 10px 24px var(--c-glow)',
+  heroTitleRowCompact: {
+    gap: 0,
   },
   heroTitle: {
     fontSize: 16,
@@ -487,50 +750,87 @@ const styles = {
     fontWeight: 800,
     color: 'var(--text-primary)',
   },
+  heroTitleCompact: {
+    fontSize: 14,
+    lineHeight: 1.2,
+  },
+  heroTitleUltraCompact: {
+    fontSize: 13,
+  },
   heroSubtitle: {
     marginTop: 4,
     fontSize: 12,
     lineHeight: 1.45,
     color: 'var(--text-secondary)',
   },
+  heroSubtitleCompact: {
+    marginTop: 2,
+    fontSize: 10,
+    lineHeight: 1.25,
+  },
   statsRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
+    flexShrink: 0,
+  },
+  statsRowCompact: {
+    gap: 6,
+    marginBottom: 6,
   },
   statCard: {
-    padding: '10px 8px',
+    padding: '8px 8px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 4,
-    minHeight: 86,
+    gap: 3,
+    minHeight: 76,
+  },
+  statCardCompact: {
+    padding: '7px 6px',
+    minHeight: 68,
   },
   statIconWrap: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(255,255,255,0.08)',
   },
+  statIconWrapCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+  },
   statValue: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: 800,
     background: 'linear-gradient(135deg, var(--text-primary), var(--primary-light))',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+  },
+  statValueCompact: {
+    fontSize: 17,
   },
   statLabel: {
     fontSize: 10,
     color: 'var(--text-muted)',
     fontWeight: 500,
   },
+  statLabelCompact: {
+    fontSize: 9,
+  },
   streakCard: {
-    padding: '11px 13px',
-    marginBottom: 10,
+    padding: '10px 12px',
+    marginBottom: 8,
+    flexShrink: 0,
+  },
+  streakCardCompact: {
+    padding: '8px 10px',
+    marginBottom: 6,
   },
   streakHeader: {
     display: 'flex',
@@ -585,8 +885,13 @@ const styles = {
     background: 'rgba(255,255,255,0.06)',
   },
   quoteCard: {
-    padding: '12px 14px',
-    marginBottom: 8,
+    padding: '10px 12px',
+    marginBottom: 6,
+    flexShrink: 0,
+  },
+  quoteCardCompact: {
+    padding: '8px 10px',
+    marginBottom: 4,
   },
   quoteHeader: {
     display: 'flex',
@@ -595,8 +900,8 @@ const styles = {
     marginBottom: 6,
   },
   quoteIconWrap: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: 10,
     background: 'var(--c-primary-bg)',
     color: 'var(--primary-light)',
@@ -604,33 +909,61 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  quoteIconWrapCompact: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+  },
   quoteLabel: {
     fontSize: 12,
     fontWeight: 700,
     color: 'var(--text-muted)',
   },
+  quoteLabelCompact: {
+    fontSize: 11,
+  },
   quoteText: {
-    fontSize: 13,
-    lineHeight: 1.5,
+    fontSize: 12.5,
+    lineHeight: 1.4,
     color: 'var(--text-secondary)',
     fontWeight: 500,
     paddingLeft: 2,
   },
+  quoteTextCompact: {
+    fontSize: 11.5,
+    lineHeight: 1.3,
+  },
   catArea: {
     display: 'flex',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
     minHeight: 170,
-    flex: 1,
+    flex: '1 1 auto',
     alignItems: 'center',
+    minWidth: 0,
+  },
+  catAreaCompact: {
+    minHeight: 156,
+    marginBottom: 0,
+  },
+  catAreaUltraCompact: {
+    minHeight: 146,
   },
   actionArea: {
     display: 'flex',
     justifyContent: 'center',
     marginTop: 'auto',
+    flexShrink: 0,
+  },
+  actionAreaCompact: {
+    paddingTop: 0,
   },
   checkedContainer: {
     textAlign: 'center',
+    flexShrink: 0,
+  },
+  checkedContainerCompact: {
+    paddingBottom: 2,
   },
   checkedBadge: {
     display: 'inline-flex',
@@ -644,11 +977,17 @@ const styles = {
     fontWeight: 700,
     color: 'var(--success)',
   },
+  checkedBadgeCompact: {
+    padding: '8px 18px',
+    borderRadius: 13,
+    fontSize: 14,
+    gap: 7,
+  },
   checkinBtn: {
     position: 'relative',
     width: '100%',
-    maxWidth: 320,
-    padding: '14px 20px',
+    maxWidth: 288,
+    padding: '12px 18px',
     borderRadius: 18,
     background: 'linear-gradient(135deg, var(--primary), var(--accent))',
     overflow: 'hidden',
@@ -658,9 +997,20 @@ const styles = {
     gap: 3,
     boxShadow: '0 12px 32px var(--c-glow)',
   },
+  checkinBtnCompact: {
+    maxWidth: 260,
+    padding: '10px 16px',
+    borderRadius: 16,
+    gap: 2,
+  },
+  checkinBtnUltraCompact: {
+    maxWidth: 248,
+    padding: '9px 14px',
+    borderRadius: 15,
+  },
   checkinBtnIcon: {
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
     borderRadius: 12,
     display: 'flex',
     alignItems: 'center',
@@ -668,28 +1018,46 @@ const styles = {
     background: 'rgba(255,255,255,0.14)',
     marginBottom: 1,
   },
+  checkinBtnIconCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 10,
+    marginBottom: 0,
+  },
   checkinBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 800,
     color: '#fff',
     letterSpacing: '0.05em',
   },
+  checkinBtnTextCompact: {
+    fontSize: 14,
+  },
   checkinBtnSub: {
-    fontSize: 11,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.7)',
+  },
+  checkinBtnSubCompact: {
+    fontSize: 9,
   },
   checkinBtnArrow: {
     position: 'absolute',
-    right: 16,
+    right: 14,
     top: '50%',
     transform: 'translateY(-50%)',
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: 15,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(255,255,255,0.14)',
+  },
+  checkinBtnArrowCompact: {
+    right: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   btnShine: {
     position: 'absolute',
