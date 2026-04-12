@@ -73,9 +73,60 @@ const CATS = {
     msgs: ['看我多厉害！', '骄傲.jpg', '就是这么优秀！✨'],
     anim: { y: [0, -6, 0], scale: [1, 1.03, 1] },
   },
+  cuddle: {
+    frames: [
+      { face: '(=˶ᵔ ᵕ ᵔ˶=)', body: '  ⊂⌒っ♡ω♡)っ\n   想贴贴~' },
+      { face: '(=´꒳`=)', body: '  ⊂⌒っ˘ω˘)っ\n   给你抱抱' },
+    ],
+    msgs: ['贴贴你！', '抱抱今天的你', '靠近一点喵~', '让我蹭蹭你♡'],
+    anim: { x: [0, -5, 5, -5, 0], scale: [1, 1.04, 1] },
+  },
+  shy: {
+    frames: [
+      { face: '(=⸝⸝>  <⸝⸝=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n  (  害羞  )' },
+      { face: '(=⸝⸝•́ω•̀⸝⸝=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n  (  偷看你 )' },
+    ],
+    msgs: ['你一看我就害羞…', '不要一直盯着我啦', '喵呜，有点脸红', '你今天很好看诶'],
+    anim: { y: [0, -4, 0], rotate: [0, -2, 2, 0] },
+  },
+  roll: {
+    frames: [
+      { face: '(=^･ω･^=)', body: '  ＿/￣○\n  猫猫打滚~' },
+      { face: '(=≧ω≦=)', body: '  ○＿/￣\n  再滚一下!' },
+    ],
+    msgs: ['看我打滚！', '软乎乎翻个身~', '再摸一下就继续滚', '地板好舒服呀'],
+    anim: { rotate: [0, 8, -8, 8, 0], y: [0, -4, 0] },
+  },
+  peek: {
+    frames: [
+      { face: '|ૂ•ω•` )', body: '  ┌────┐\n  | 偷偷看 |\n  └────┘' },
+      { face: '|ૂ•̀ω•́ )✧', body: '  ┌────┐\n  | 发现你啦 |\n  └────┘' },
+    ],
+    msgs: ['我在偷偷看你学习', '认真起来的你很闪亮', '我来巡逻啦', '有没有在偷懒呀~'],
+    anim: { x: [0, -6, 0, 6, 0] },
+  },
+  snack: {
+    frames: [
+      { face: '(=^･ｪ･^=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n  ૮₍ ˃ ⤙ ˂ ₎ა🐟' },
+      { face: '(=^･o･^=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n  鱼干分你一半' },
+    ],
+    msgs: ['给你鱼干！', '学习辛苦啦，吃一口~', '请你收下今日小零食', '鱼干和夸夸都给你'],
+    anim: { y: [0, -8, 0], scale: [1, 1.06, 1] },
+  },
+  angel: {
+    frames: [
+      { face: '(=˘︶˘=)', body: '    ☁\n  /ᐠ｡ꞈ｡ᐟ\\\n   小天使喵' },
+      { face: '(=ˊᵕˋ=)', body: '    ✧\n  /ᐠ｡ꞈ｡ᐟ\\\n   守护你呀' },
+    ],
+    msgs: ['今天也被我守护着', '顺顺利利，平平安安', '愿你心里有光', '给你一份温柔好运'],
+    anim: { y: [0, -10, 0], scale: [1, 1.03, 1] },
+  },
 };
 
-const TOUCH_POOL = ['happy', 'love', 'paw', 'excited', 'spin', 'proud'];
+const TOUCH_POOL = ['happy', 'love', 'paw', 'excited', 'proud', 'cuddle', 'shy', 'peek', 'snack'];
+const HEART_PARTICLES = ['💕', '♡', '💗', '✨', '⭐', '🩷', '💖', '❣️', '🎀', '🫧'];
+const FLOAT_PARTICLES = ['🐾', '✨', '⭐', '💫', '🎀', '🐟'];
+const INTERACTION_SETTLE_MS = 9000;
 
 export default function CatPet({ mood = 'idle', onInteract }) {
   const [curMood, setCurMood] = useState(mood);
@@ -85,13 +136,16 @@ export default function CatPet({ mood = 'idle', onInteract }) {
   const [hearts, setHearts] = useState([]);
   const [taps, setTaps] = useState(0);
   const [paws, setPaws] = useState([]);
+  const [sparkles, setSparkles] = useState([]);
   const controls = useAnimation();
   const catRef = useRef(null);
   const msgTimer = useRef(null);
   const frameTimer = useRef(null);
+  const settleTimer = useRef(null);
 
   useEffect(() => {
     setCurMood(mood);
+    clearTimeout(settleTimer.current);
   }, [mood]);
 
   useEffect(() => {
@@ -136,6 +190,19 @@ export default function CatPet({ mood = 'idle', onInteract }) {
     });
   }, [curMood, controls]);
 
+  useEffect(() => () => {
+    clearTimeout(msgTimer.current);
+    clearTimeout(settleTimer.current);
+    clearInterval(frameTimer.current);
+  }, []);
+
+  const scheduleSettleBack = useCallback((targetMood = mood) => {
+    clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      setCurMood(targetMood);
+    }, INTERACTION_SETTLE_MS);
+  }, [mood]);
+
   const handleTouch = useCallback((e) => {
     e.preventDefault();
     const nextTapCount = taps + 1;
@@ -155,22 +222,31 @@ export default function CatPet({ mood = 'idle', onInteract }) {
         setPaws((prev) => [...prev.slice(-4), { id: pawId, x: cursorX + (Math.random() - 0.5) * 60, y: cursorY + 20 }]);
         setTimeout(() => setPaws((prev) => prev.filter((paw) => paw.id !== pawId)), 2000);
       }
+
+      if (nextTapCount % 2 === 0) {
+        const sparkleId = id + 0.8;
+        setSparkles((prev) => [
+          ...prev.slice(-6),
+          { id: sparkleId, x: cursorX + (Math.random() - 0.5) * 40, y: cursorY - 6, char: FLOAT_PARTICLES[nextTapCount % FLOAT_PARTICLES.length] },
+        ]);
+        setTimeout(() => setSparkles((prev) => prev.filter((item) => item.id !== sparkleId)), 1600);
+      }
     }
 
     let nextMood;
-    if (nextTapCount % 15 === 0) nextMood = 'spin';
+    if (nextTapCount % 18 === 0) nextMood = 'angel';
+    else if (nextTapCount % 15 === 0) nextMood = 'spin';
+    else if (nextTapCount % 11 === 0) nextMood = 'roll';
     else if (nextTapCount % 7 === 0) nextMood = 'love';
-    else if (nextTapCount % 5 === 0) nextMood = 'proud';
+    else if (nextTapCount % 5 === 0) nextMood = 'cuddle';
+    else if (nextTapCount % 4 === 0) nextMood = 'shy';
     else nextMood = TOUCH_POOL[Math.floor(Math.random() * TOUCH_POOL.length)];
 
     setCurMood(nextMood);
     showRandomMsg(nextMood);
     onInteract?.();
-
-    setTimeout(() => {
-      setCurMood(mood);
-    }, 3500);
-  }, [taps, mood, showRandomMsg, onInteract]);
+    scheduleSettleBack();
+  }, [taps, showRandomMsg, onInteract, scheduleSettleBack]);
 
   const cat = CATS[curMood] || CATS.idle;
   const currentFrame = cat.frames[frame % cat.frames.length];
@@ -211,7 +287,7 @@ export default function CatPet({ mood = 'idle', onInteract }) {
         transition={{ duration: 2.5, repeat: Infinity }}
         style={styles.hint}
       >
-        点击撸猫 · 已互动 {taps} 次
+        轻轻摸摸猫咪 · 已贴贴 {taps} 次
       </motion.p>
 
       {hearts.map((heart) => (
@@ -222,7 +298,7 @@ export default function CatPet({ mood = 'idle', onInteract }) {
           transition={{ duration: 0.9, ease: 'easeOut' }}
           style={styles.particle}
         >
-          {['💕', '♡', '💗', '✨', '⭐', '🩷', '💖', '❣️'][Math.floor(Math.random() * 8)]}
+          {HEART_PARTICLES[Math.floor(Math.random() * HEART_PARTICLES.length)]}
         </motion.span>
       ))}
 
@@ -235,6 +311,18 @@ export default function CatPet({ mood = 'idle', onInteract }) {
           style={{ ...styles.particle, left: paw.x, top: paw.y, fontSize: 20 }}
         >
           🐾
+        </motion.span>
+      ))}
+
+      {sparkles.map((sparkle) => (
+        <motion.span
+          key={sparkle.id}
+          initial={{ opacity: 0, scale: 0.2, x: sparkle.x, y: sparkle.y }}
+          animate={{ opacity: 0.95, scale: 1.15, y: sparkle.y - 42, x: sparkle.x + (Math.random() - 0.5) * 22 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          style={{ ...styles.particle, fontSize: 15 }}
+        >
+          {sparkle.char}
         </motion.span>
       ))}
     </div>
@@ -320,7 +408,7 @@ const styles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%,-50%)',
-    background: 'radial-gradient(circle, var(--c-cat-glow) 0%, transparent 70%)',
+    background: 'radial-gradient(circle, var(--c-cat-glow) 0%, transparent 72%)',
     pointerEvents: 'none',
   },
   hint: {
@@ -330,6 +418,7 @@ const styles = {
     color: 'var(--c-text3)',
     fontWeight: 500,
     whiteSpace: 'nowrap',
+    letterSpacing: '0.01em',
   },
   particle: {
     position: 'absolute',

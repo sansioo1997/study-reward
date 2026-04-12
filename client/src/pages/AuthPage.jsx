@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowRight, FiHeart, FiLock, FiMoon } from 'react-icons/fi';
-import { HiMiniHeart } from 'react-icons/hi2';
 import { api } from '../utils/api';
 import { useTheme } from '../utils/theme';
 
@@ -69,7 +68,7 @@ export default function AuthPage({ onSuccess }) {
           style={styles.logoContainer}
         >
           <span style={styles.logo}>
-            <HiMiniHeart size={30} />
+            <span style={styles.logoCat}>(=^・ω・^=)</span>
           </span>
         </motion.div>
 
@@ -94,7 +93,7 @@ export default function AuthPage({ onSuccess }) {
               type="text"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="你的人生态度"
+              placeholder="人生态度"
               style={styles.input}
               autoComplete="off"
               autoFocus
@@ -139,8 +138,6 @@ export default function AuthPage({ onSuccess }) {
             </motion.p>
           )}
         </AnimatePresence>
-
-        <p style={styles.hint}>仅限受邀用户访问，输入专属口号后即可进入。</p>
       </motion.div>
     </div>
   );
@@ -206,6 +203,12 @@ const styles = {
     background: 'linear-gradient(135deg, var(--primary), var(--accent))',
     color: '#fff',
     boxShadow: '0 14px 32px var(--c-glow)',
+  },
+  logoCat: {
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    lineHeight: 1.1,
   },
   title: {
     fontSize: 32,
@@ -278,11 +281,5 @@ const styles = {
     color: 'var(--danger)',
     fontSize: 14,
     fontWeight: 500,
-  },
-  hint: {
-    marginTop: 32,
-    fontSize: 12,
-    color: 'var(--text-muted)',
-    lineHeight: 1.6,
   },
 };

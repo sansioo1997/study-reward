@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiArrowRight,
@@ -58,6 +58,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
   const [catMood, setCatMood] = useState('idle');
   const [quote, setQuote] = useState(() => getNextQuote());
   const scrollRef = useRef(null);
+  const moodResetTimerRef = useRef(null);
   const { theme, cycleTheme, themeMeta } = useTheme();
 
   const dateInfo = formatDate();
@@ -86,10 +87,23 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
     },
   ];
 
+  useEffect(() => () => clearTimeout(moodResetTimerRef.current), []);
+
+  const holdCelebrationMood = (nextMood, duration = 14000) => {
+    clearTimeout(moodResetTimerRef.current);
+    setCatMood(nextMood);
+    moodResetTimerRef.current = setTimeout(() => {
+      setCatMood('idle');
+    }, duration);
+  };
+
   const handleCheckinComplete = (result) => {
-    setCheckinResult(result);
+    setCheckinResult({
+      ...result,
+      checkinId: Number(result?.checkinId),
+    });
     setShowCheckin(false);
-    setCatMood(result.isWeekend ? 'super_excited' : 'happy');
+    holdCelebrationMood(result.isWeekend ? 'super_excited' : 'happy', result.isWeekend ? 18000 : 14000);
     refreshStats();
     // Auto show lottery after a delay
     setTimeout(() => {
@@ -99,7 +113,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
 
   const handleLotteryClose = () => {
     setShowLottery(false);
-    setCatMood('idle');
+    holdCelebrationMood(checkinResult?.isWeekend ? 'super_excited' : 'happy', checkinResult?.isWeekend ? 12000 : 9000);
     refreshStats();
   };
 
@@ -291,6 +305,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
               whileHover={{ scale: 1.02 }}
               onClick={() => {
                 setShowCheckin(true);
+                clearTimeout(moodResetTimerRef.current);
                 setCatMood('excited');
               }}
               style={styles.checkinBtn}

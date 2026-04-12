@@ -29,8 +29,8 @@ function AppInner() {
   }, [authenticated]);
 
   useEffect(() => {
-    if (authenticated) refreshStats();
-  }, [authenticated, refreshStats]);
+    if (authenticated && currentPage === 'home') refreshStats();
+  }, [authenticated, currentPage, refreshStats]);
 
   if (!authenticated) {
     return (

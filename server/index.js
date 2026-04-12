@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const ALLOW_RECORD_DELETE = process.env.NODE_ENV !== 'production';
 
 app.use(cors());
 app.use(express.json());
@@ -61,6 +62,7 @@ async function initDB() {
     db.run('INSERT INTO streak (id, current_streak, max_streak, total_days, total_hours, ultimate_prize_claimed) VALUES (1, 0, 0, 0, 0, 0)');
   }
 
+  recalculateStreak();
   saveDB();
   console.log('📊 Database initialized');
 }
@@ -115,6 +117,59 @@ function getToday() {
 
 function getNowStr() {
   return getNow().toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function diffDays(dateA, dateB) {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const a = new Date(`${dateA}T00:00:00+08:00`).getTime();
+  const b = new Date(`${dateB}T00:00:00+08:00`).getTime();
+  return Math.round((b - a) / dayMs);
+}
+
+function recalculateStreak() {
+  const checkins = queryAll('SELECT date, study_hours FROM checkins ORDER BY date ASC');
+  const existingStreak = queryOne('SELECT * FROM streak WHERE id = 1');
+
+  if (checkins.length === 0) {
+    runSql(
+      'UPDATE streak SET current_streak = 0, max_streak = 0, total_days = 0, total_hours = 0, ultimate_prize_claimed = 0 WHERE id = 1'
+    );
+    return;
+  }
+
+  let currentRun = 1;
+  let maxRun = 1;
+
+  for (let i = 1; i < checkins.length; i += 1) {
+    const gap = diffDays(checkins[i - 1].date, checkins[i].date);
+    if (gap === 1) {
+      currentRun += 1;
+    } else {
+      currentRun = 1;
+    }
+    maxRun = Math.max(maxRun, currentRun);
+  }
+
+  let tailRun = 1;
+  for (let i = checkins.length - 1; i > 0; i -= 1) {
+    const gap = diffDays(checkins[i - 1].date, checkins[i].date);
+    if (gap === 1) {
+      tailRun += 1;
+    } else {
+      break;
+    }
+  }
+
+  const totalHours = checkins.reduce((sum, item) => sum + (Number(item.study_hours) || 0), 0);
+  const latestDate = checkins[checkins.length - 1].date;
+  const gapToToday = diffDays(latestDate, getToday());
+  const currentStreak = gapToToday <= 1 ? tailRun : 0;
+  const ultimatePrizeClaimed = currentStreak >= 20 ? (existingStreak?.ultimate_prize_claimed || 0) : 0;
+
+  runSql(
+    'UPDATE streak SET current_streak = ?, max_streak = ?, total_days = ?, total_hours = ?, ultimate_prize_claimed = ? WHERE id = 1',
+    [currentStreak, maxRun, checkins.length, totalHours, ultimatePrizeClaimed]
+  );
 }
 
 // ==================== AUTH ====================
@@ -247,13 +302,36 @@ app.post('/api/checkin', authMiddleware, (req, res) => {
 app.post('/api/lottery', authMiddleware, (req, res) => {
   try {
     const { checkinId } = req.body;
-    
-    const checkin = queryOne('SELECT * FROM checkins WHERE id = ?', [checkinId]);
+
+    let effectiveCheckinId = Number(checkinId);
+    let checkin = null;
+
+    if (Number.isFinite(effectiveCheckinId) && effectiveCheckinId > 0) {
+      checkin = queryOne('SELECT * FROM checkins WHERE id = ?', [effectiveCheckinId]);
+    }
+
+    // Fallback to today's latest unclaimed checkin when the client carries an empty or stale id.
+    if (!checkin) {
+      const fallbackCheckin = queryOne(`
+        SELECT c.*
+        FROM checkins c
+        LEFT JOIN prizes p ON c.id = p.checkin_id
+        WHERE c.date = ? AND p.id IS NULL
+        ORDER BY c.id DESC
+        LIMIT 1
+      `, [getToday()]);
+
+      if (fallbackCheckin) {
+        checkin = fallbackCheckin;
+        effectiveCheckinId = Number(fallbackCheckin.id);
+      }
+    }
+
     if (!checkin) {
       return res.status(400).json({ error: '打卡记录不存在' });
     }
     
-    const existingPrize = queryOne('SELECT * FROM prizes WHERE checkin_id = ?', [checkinId]);
+    const existingPrize = queryOne('SELECT * FROM prizes WHERE checkin_id = ?', [effectiveCheckinId]);
     if (existingPrize) {
       return res.status(400).json({ error: '已经抽过奖了', prize: existingPrize });
     }
@@ -281,15 +359,15 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
       } else {
         prizeType = 'cash';
         const hrs = Number(checkin.study_hours) || 1;
-        const multiplier = 1 + Math.random() * 0.5;
-        amount = 20 * hrs * multiplier;
-        prizeDetail = '现金奖励 ' + Math.round(amount) + ' 元！(20元 x ' + hrs + '小时 x 幸运系数' + multiplier.toFixed(2) + ')';
+        const multiplier = 1 + Math.random() * 0.8;
+        amount = Math.max(1, Math.round(20 * hrs * multiplier));
+        prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
       }
     }
 
     runSql(
       'INSERT INTO prizes (checkin_id, prize_type, prize_detail, amount, created_at) VALUES (?, ?, ?, ?, ?)',
-      [checkinId, prizeType, prizeDetail, amount, getNowStr()]
+      [effectiveCheckinId, prizeType, prizeDetail, amount, getNowStr()]
     );
 
     res.json({ prizeType, prizeDetail, amount, streak: streak?.current_streak || 0 });
@@ -310,6 +388,33 @@ app.get('/api/records', authMiddleware, (req, res) => {
     res.json({ records });
   } catch (e) {
     console.error('Records error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/records/:id', authMiddleware, (req, res) => {
+  try {
+    if (!ALLOW_RECORD_DELETE) {
+      return res.status(403).json({ error: '线上环境不支持删除记录' });
+    }
+
+    const recordId = Number(req.params.id);
+    if (!Number.isFinite(recordId) || recordId <= 0) {
+      return res.status(400).json({ error: '记录 ID 无效' });
+    }
+
+    const record = queryOne('SELECT * FROM checkins WHERE id = ?', [recordId]);
+    if (!record) {
+      return res.status(404).json({ error: '打卡记录不存在' });
+    }
+
+    runSql('DELETE FROM prizes WHERE checkin_id = ?', [recordId]);
+    runSql('DELETE FROM checkins WHERE id = ?', [recordId]);
+    recalculateStreak();
+
+    res.json({ success: true, deletedId: recordId });
+  } catch (e) {
+    console.error('Delete record error:', e);
     res.status(500).json({ error: e.message });
   }
 });

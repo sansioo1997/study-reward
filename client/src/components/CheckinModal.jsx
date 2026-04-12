@@ -7,8 +7,10 @@ import {
   FiClock,
   FiEdit3,
   FiHeart,
+  FiMessageCircle,
   FiSend,
 } from 'react-icons/fi';
+import { HiMiniSparkles } from 'react-icons/hi2';
 import { api } from '../utils/api';
 
 const MOODS = [
@@ -71,6 +73,8 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
       style={styles.overlay}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
+      <div style={styles.overlayGlowLeft} />
+      <div style={styles.overlayGlowRight} />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -78,6 +82,8 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         style={styles.sheet}
       >
+        <div style={styles.sheetGlow} />
+        <div style={styles.sheetOrbit} />
         {/* Handle */}
         <div style={styles.handle} />
 
@@ -102,6 +108,11 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
           <span style={styles.stepMetaText}>步骤 {step} / 3</span>
         </div>
 
+        <div style={styles.titleBadge}>
+          <HiMiniSparkles size={13} />
+          <span>把今天认真收藏起来</span>
+        </div>
+
         <AnimatePresence mode="wait">
           {/* Step 1: Study Hours */}
           {step === 1 && (
@@ -112,11 +123,13 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               exit={{ opacity: 0, x: -30 }}
               style={styles.stepContent}
             >
-              <h3 style={styles.stepTitle}>
-                <FiBookOpen size={18} />
-                <span>今日学习时长</span>
-              </h3>
-              <p style={styles.stepSubtitle}>选择或输入你今天学了多久</p>
+              <div className="glass-card" style={styles.stepHeroCard}>
+                <div style={styles.stepHeroIcon}>
+                  <FiBookOpen size={18} />
+                </div>
+                <h3 style={styles.stepTitle}>今日学习时长</h3>
+                <p style={styles.stepSubtitle}>选择或输入你今天学了多久</p>
+              </div>
               
               <div style={styles.hourGrid}>
                 {HOUR_OPTIONS.map(h => (
@@ -128,14 +141,16 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                       ...styles.hourBtn,
                       background: studyHours === h 
                         ? 'linear-gradient(135deg, var(--primary), var(--accent))'
-                        : 'rgba(255,255,255,0.06)',
+                        : 'var(--bg-card)',
                       border: studyHours === h 
                         ? '1px solid var(--primary-light)'
-                        : '1px solid rgba(255,255,255,0.08)',
+                        : '1px solid var(--border)',
+                      boxShadow: studyHours === h ? '0 12px 26px var(--c-glow)' : 'var(--shadow)',
+                      color: studyHours === h ? '#fff' : 'var(--text-primary)',
                     }}
                   >
                     <span style={{ fontSize: 20, fontWeight: 800 }}>{h}</span>
-                    <span style={{ fontSize: 11, opacity: 0.7 }}>小时</span>
+                    <span style={{ fontSize: 11, opacity: studyHours === h ? 0.8 : 0.6 }}>小时</span>
                   </motion.button>
                 ))}
               </div>
@@ -177,11 +192,13 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               exit={{ opacity: 0, x: -30 }}
               style={styles.stepContent}
             >
-              <h3 style={styles.stepTitle}>
-                <FiHeart size={18} />
-                <span>今日心情</span>
-              </h3>
-              <p style={styles.stepSubtitle}>选一个表情代表你的心情，小猫会跟着变哦</p>
+              <div className="glass-card" style={styles.stepHeroCard}>
+                <div style={styles.stepHeroIcon}>
+                  <FiHeart size={18} />
+                </div>
+                <h3 style={styles.stepTitle}>今日心情</h3>
+                <p style={styles.stepSubtitle}>选一个表情代表你的心情，小猫会跟着变哦</p>
+              </div>
               
               <div style={styles.moodGrid}>
                 {MOODS.map(m => (
@@ -193,12 +210,13 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                     style={{
                       ...styles.moodBtn,
                       background: selectedMood === m.value
-                        ? 'rgba(124, 92, 252, 0.2)'
-                        : 'rgba(255,255,255,0.04)',
+                        ? 'linear-gradient(135deg, var(--c-primary-bg2), rgba(255,255,255,0.16))'
+                        : 'var(--bg-card)',
                       border: selectedMood === m.value
                         ? '2px solid var(--primary)'
-                        : '2px solid transparent',
+                        : '1px solid var(--border)',
                       transform: selectedMood === m.value ? 'scale(1.08)' : 'scale(1)',
+                      boxShadow: selectedMood === m.value ? '0 10px 24px var(--c-glow)' : 'var(--shadow)',
                     }}
                   >
                     <span style={{ fontSize: 32 }}>{m.emoji}</span>
@@ -234,11 +252,13 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               exit={{ opacity: 0, x: -30 }}
               style={styles.stepContent}
             >
-              <h3 style={styles.stepTitle}>
-                <FiEdit3 size={18} />
-                <span>写点心里话</span>
-              </h3>
-              <p style={styles.stepSubtitle}>可选，给自己的一段话或今日感想</p>
+              <div className="glass-card" style={styles.stepHeroCard}>
+                <div style={styles.stepHeroIcon}>
+                  <FiMessageCircle size={18} />
+                </div>
+                <h3 style={styles.stepTitle}>写点心里话</h3>
+                <p style={styles.stepSubtitle}>可选，给自己的一段话或今日感想</p>
+              </div>
               
               <textarea
                 value={message}
@@ -252,11 +272,17 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
               {/* Summary */}
               <div className="glass-card" style={styles.summary}>
                 <div style={styles.summaryRow}>
-                  <span>⏱️ 学习时长</span>
+                  <span style={styles.summaryLabel}>
+                    <FiClock size={14} />
+                    <span>学习时长</span>
+                  </span>
                   <span style={{ fontWeight: 700, color: 'var(--primary-light)' }}>{studyHours} 小时</span>
                 </div>
                 <div style={styles.summaryRow}>
-                  <span>💭 今日心情</span>
+                  <span style={styles.summaryLabel}>
+                    <FiHeart size={14} />
+                    <span>今日心情</span>
+                  </span>
                   <span>{MOODS.find(m => m.value === selectedMood)?.emoji} {MOODS.find(m => m.value === selectedMood)?.label}</span>
                 </div>
               </div>
@@ -299,31 +325,80 @@ const styles = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.6)',
-    backdropFilter: 'blur(4px)',
+    background: 'rgba(10, 10, 26, 0.62)',
+    backdropFilter: 'blur(8px)',
     zIndex: 100,
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  overlayGlowLeft: {
+    position: 'absolute',
+    left: -80,
+    bottom: 80,
+    width: 220,
+    height: 220,
+    borderRadius: '50%',
+    background: 'var(--c-orb1)',
+    filter: 'blur(46px)',
+    pointerEvents: 'none',
+  },
+  overlayGlowRight: {
+    position: 'absolute',
+    right: -60,
+    top: 80,
+    width: 200,
+    height: 200,
+    borderRadius: '50%',
+    background: 'var(--c-orb2)',
+    filter: 'blur(42px)',
+    pointerEvents: 'none',
   },
   sheet: {
     width: '100%',
     maxWidth: 430,
-    background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%)',
+    background: 'linear-gradient(180deg, var(--c-card-solid) 0%, rgba(255,255,255,0.04) 100%)',
     borderRadius: '24px 24px 0 0',
     padding: '12px 20px 32px',
     paddingBottom: 'calc(var(--safe-bottom) + 32px)',
     maxHeight: '85vh',
     overflowY: 'auto',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid var(--c-border)',
     borderBottom: 'none',
+    boxShadow: 'var(--c-shadow-lg)',
+    position: 'relative',
+  },
+  sheetGlow: {
+    position: 'absolute',
+    right: -20,
+    top: 40,
+    width: 180,
+    height: 180,
+    borderRadius: '50%',
+    background: 'var(--c-gradient2)',
+    filter: 'blur(30px)',
+    opacity: 0.65,
+    pointerEvents: 'none',
+  },
+  sheetOrbit: {
+    position: 'absolute',
+    left: 18,
+    top: 18,
+    width: 56,
+    height: 56,
+    borderRadius: '50%',
+    border: '1px dashed var(--c-border)',
+    pointerEvents: 'none',
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    background: 'rgba(255,255,255,0.2)',
+    background: 'var(--border)',
     margin: '0 auto 16px',
+    position: 'relative',
+    zIndex: 1,
   },
   progress: {
     display: 'flex',
@@ -331,6 +406,8 @@ const styles = {
     gap: 6,
     marginBottom: 24,
     alignItems: 'center',
+    position: 'relative',
+    zIndex: 1,
   },
   progressDot: {
     height: 8,
@@ -346,7 +423,9 @@ const styles = {
     padding: '6px 12px',
     borderRadius: 999,
     background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid var(--c-border)',
+    position: 'relative',
+    zIndex: 1,
   },
   stepMetaIcon: {
     width: 24,
@@ -355,33 +434,65 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(255,255,255,0.08)',
-    color: '#fff',
+    background: 'var(--c-primary-bg)',
+    color: 'var(--primary-light)',
   },
   stepMetaText: {
     fontSize: 12,
     color: 'var(--text-secondary)',
     fontWeight: 700,
   },
+  titleBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'center',
+    marginBottom: 14,
+    padding: '7px 12px',
+    borderRadius: 999,
+    background: 'var(--c-primary-bg)',
+    color: 'var(--primary-light)',
+    fontSize: 11,
+    fontWeight: 700,
+    position: 'relative',
+    zIndex: 1,
+  },
   stepContent: {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
+    position: 'relative',
+    zIndex: 1,
   },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: 800,
-    textAlign: 'center',
-    display: 'inline-flex',
+  stepHeroCard: {
+    padding: '16px 16px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepHeroIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+    color: '#fff',
+    boxShadow: '0 10px 24px var(--c-glow)',
+  },
+  stepTitle: {
+    fontSize: 21,
+    fontWeight: 800,
+    textAlign: 'center',
+    color: 'var(--text-primary)',
   },
   stepSubtitle: {
     fontSize: 13,
     color: 'var(--text-secondary)',
     textAlign: 'center',
-    marginBottom: 4,
+    lineHeight: 1.55,
   },
   hourGrid: {
     display: 'grid',
@@ -396,7 +507,7 @@ const styles = {
     alignItems: 'center',
     gap: 2,
     transition: 'all 0.2s',
-    color: '#fff',
+    backdropFilter: 'blur(10px)',
   },
   customHourRow: {
     display: 'flex',
@@ -408,9 +519,9 @@ const styles = {
     width: 80,
     padding: '8px 12px',
     borderRadius: 10,
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: '#fff',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-primary)',
     fontSize: 16,
     textAlign: 'center',
   },
@@ -426,17 +537,19 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     transition: 'all 0.2s',
+    backdropFilter: 'blur(8px)',
   },
   textarea: {
     width: '100%',
     padding: '14px 16px',
     borderRadius: 16,
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#fff',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-primary)',
     fontSize: 14,
     lineHeight: 1.6,
     resize: 'none',
+    boxShadow: 'var(--shadow)',
   },
   summary: {
     padding: '14px 16px',
@@ -447,8 +560,14 @@ const styles = {
   summaryRow: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     fontSize: 14,
     color: 'var(--text-secondary)',
+  },
+  summaryLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
   },
   btnRow: {
     display: 'flex',
@@ -468,18 +587,20 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    boxShadow: '0 10px 26px var(--c-glow)',
   },
   backBtn: {
     padding: '14px 18px',
     borderRadius: 14,
-    background: 'rgba(255,255,255,0.08)',
+    background: 'var(--bg-card)',
     color: 'var(--text-secondary)',
     fontWeight: 600,
     fontSize: 14,
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid var(--border)',
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
+    boxShadow: 'var(--shadow)',
   },
   submitBtn: {
     flex: 1,

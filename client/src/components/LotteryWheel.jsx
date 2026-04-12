@@ -1,40 +1,57 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiAward, FiBox, FiDollarSign, FiGift, FiX } from 'react-icons/fi';
-import { HiMiniSparkles } from 'react-icons/hi2';
+import { FiAward, FiBox, FiCheckCircle, FiDollarSign, FiGift, FiX } from 'react-icons/fi';
+import {
+  HiMiniBanknotes,
+  HiMiniCube,
+  HiMiniGift,
+  HiMiniSparkles,
+  HiMiniStar,
+  HiMiniTrophy,
+} from 'react-icons/hi2';
 import { api } from '../utils/api';
 
 const PRIZE_COLORS = {
   cash: { bg: 'linear-gradient(135deg, #fbbf24, #f59e0b)', icon: FiDollarSign },
-  blindbox: { bg: 'linear-gradient(135deg, #a78bfa, #7c5cfc)', icon: FiBox },
-  custom: { bg: 'linear-gradient(135deg, #f472b6, #ec4899)', icon: FiGift },
-  ultimate: { bg: 'linear-gradient(135deg, #fbbf24, #ef4444, #ec4899)', icon: FiAward },
+  blindbox: { bg: 'linear-gradient(135deg, var(--primary), var(--accent))', icon: FiBox },
+  custom: { bg: 'linear-gradient(135deg, var(--accent), #ec4899)', icon: FiGift },
+  ultimate: { bg: 'linear-gradient(135deg, #fbbf24, var(--accent), var(--primary))', icon: FiAward },
 };
 
-const SLOT_ITEMS = ['💰', '📦', '🎁', '👜', '⭐', '🎉', '💎', '🌟'];
-const PRIZE_PREVIEW = [
-  { icon: FiDollarSign, label: '现金奖励', detail: '按学习时长解锁奖励' },
-  { icon: FiBox, label: '惊喜盲盒', detail: '打开一份随机小惊喜' },
-  { icon: FiGift, label: '心愿礼物', detail: '心愿单里挑一份' },
-  { icon: FiAward, label: '神秘大礼', detail: '连续坚持触发彩蛋' },
+const SLOT_ITEMS = [
+  { icon: HiMiniBanknotes, color: '#f59e0b' },
+  { icon: HiMiniCube, color: 'var(--primary)' },
+  { icon: HiMiniGift, color: 'var(--accent)' },
+  { icon: HiMiniTrophy, color: '#f97316' },
+  { icon: HiMiniStar, color: '#fbbf24' },
+  { icon: HiMiniSparkles, color: 'var(--primary-light)' },
+  { icon: FiGift, color: 'var(--accent)' },
+  { icon: FiAward, color: 'var(--warning)' },
 ];
+const PRIZE_PREVIEW = [
+  { icon: FiDollarSign, label: '现金奖励', detail: '认真学习就有机会解锁' },
+  { icon: FiBox, label: '惊喜盲盒', detail: '拆开一份今日好心情' },
+  { icon: FiGift, label: '心愿礼物', detail: '让小愿望被温柔实现' },
+  { icon: FiAward, label: '神秘大礼', detail: '坚持越久，越容易触发彩蛋' },
+];
+const SPIN_STAGES = ['好运校准中', '奖励池转动中', '马上揭晓', '结果生成中'];
 
 export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
-  const [phase, setPhase] = useState('intro'); // intro, spinning, reveal
+  const [phase, setPhase] = useState('intro');
   const [prize, setPrize] = useState(null);
   const [error, setError] = useState('');
   const [slotValues, setSlotValues] = useState([0, 0, 0]);
   const [confettiParticles, setConfettiParticles] = useState([]);
+  const [spinStage, setSpinStage] = useState(SPIN_STAGES[0]);
   const spinTimers = useRef([]);
 
-  // Generate confetti
   const fireConfetti = useCallback(() => {
-    const particles = Array.from({ length: 40 }, (_, i) => ({
+    const particles = Array.from({ length: 44 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
-      color: ['#fbbf24', '#f472b6', '#7c5cfc', '#34d399', '#ef4444', '#06b6d4'][Math.floor(Math.random() * 6)],
-      delay: Math.random() * 0.5,
-      duration: Math.random() * 1.5 + 1,
+      color: ['var(--warning)', 'var(--accent)', 'var(--primary)', 'var(--success)', '#f97316', '#38bdf8'][Math.floor(Math.random() * 6)],
+      delay: Math.random() * 0.45,
+      duration: Math.random() * 1.3 + 1.1,
       size: Math.random() * 8 + 4,
       rotate: Math.random() * 360,
     }));
@@ -44,64 +61,71 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
   const startSpin = useCallback(async () => {
     setPhase('spinning');
     setError('');
-    
-    // Start all 3 slots spinning
-    const intervals = [0, 1, 2].map(i => {
-      return setInterval(() => {
-        setSlotValues(prev => {
-          const next = [...prev];
-          next[i] = (next[i] + 1) % SLOT_ITEMS.length;
-          return next;
-        });
-      }, 80 + i * 20);
-    });
+    setSpinStage(SPIN_STAGES[0]);
+
+    const intervals = [0, 1, 2].map((i) => setInterval(() => {
+      setSlotValues((prev) => {
+        const next = [...prev];
+        next[i] = (next[i] + 1) % SLOT_ITEMS.length;
+        return next;
+      });
+    }, 85 + i * 25));
     spinTimers.current = intervals;
 
-    // Get actual prize from API
     try {
-      const result = await api.lottery(checkinId);
+      const result = await api.lottery(Number(checkinId));
       setPrize(result);
-      
-      // Stop slots one by one with delay
-      const targetIdx = result.prizeType === 'cash' ? 0 
+
+      const targetIdx = result.prizeType === 'cash' ? 0
         : result.prizeType === 'blindbox' ? 1
         : result.prizeType === 'custom' ? 2
         : 3;
 
-      // Stop slot 1
+      setSpinStage(SPIN_STAGES[1]);
+
       setTimeout(() => {
         clearInterval(intervals[0]);
-        setSlotValues(prev => { const n = [...prev]; n[0] = targetIdx; return n; });
+        setSpinStage('第一格落位');
+        setSlotValues((prev) => {
+          const next = [...prev];
+          next[0] = targetIdx;
+          return next;
+        });
       }, 1000);
 
-      // Stop slot 2
       setTimeout(() => {
         clearInterval(intervals[1]);
-        setSlotValues(prev => { const n = [...prev]; n[1] = targetIdx; return n; });
-      }, 1800);
+        setSpinStage('第二格落位');
+        setSlotValues((prev) => {
+          const next = [...prev];
+          next[1] = targetIdx;
+          return next;
+        });
+      }, 1750);
 
-      // Stop slot 3 and reveal
       setTimeout(() => {
         clearInterval(intervals[2]);
-        setSlotValues(prev => { const n = [...prev]; n[2] = targetIdx; return n; });
+        setSpinStage(SPIN_STAGES[2]);
+        setSlotValues((prev) => {
+          const next = [...prev];
+          next[2] = targetIdx;
+          return next;
+        });
         setTimeout(() => {
+          setSpinStage(SPIN_STAGES[3]);
           setPhase('reveal');
           fireConfetti();
-        }, 500);
-      }, 2500);
-
+        }, 420);
+      }, 2450);
     } catch (err) {
-      clearInterval(intervals[0]);
-      clearInterval(intervals[1]);
-      clearInterval(intervals[2]);
+      intervals.forEach((timer) => clearInterval(timer));
       setPhase('intro');
+      setSpinStage(SPIN_STAGES[0]);
       setError(err.message || '抽奖失败，请稍后再试');
     }
   }, [checkinId, fireConfetti]);
 
-  useEffect(() => {
-    return () => spinTimers.current.forEach(t => clearInterval(t));
-  }, []);
+  useEffect(() => () => spinTimers.current.forEach((timer) => clearInterval(timer)), []);
 
   const canClose = phase !== 'spinning';
 
@@ -115,13 +139,19 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
         if (canClose && e.target === e.currentTarget) onClose();
       }}
     >
+      <div style={styles.overlayGlowLeft} />
+      <div style={styles.overlayGlowRight} />
+
       <motion.div
-        initial={{ scale: 0.8, y: 50 }}
+        initial={{ scale: 0.86, y: 40 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.8, y: 50 }}
+        exit={{ scale: 0.9, y: 40 }}
         transition={{ type: 'spring', damping: 20 }}
         style={styles.container}
       >
+        <div style={styles.panelGlow} />
+        <div style={styles.panelOrbit} />
+
         <button
           type="button"
           aria-label="关闭抽奖弹窗"
@@ -136,32 +166,18 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
           <FiX size={18} />
         </button>
 
-        {/* Confetti */}
-        {confettiParticles.map(p => (
+        {confettiParticles.map((particle) => (
           <motion.div
-            key={p.id}
-            initial={{ 
-              x: `${p.x}%`, 
-              y: -20, 
-              rotate: 0,
-              opacity: 1 
-            }}
-            animate={{ 
-              y: 500,
-              rotate: p.rotate + 360,
-              opacity: 0 
-            }}
-            transition={{ 
-              duration: p.duration, 
-              delay: p.delay,
-              ease: 'easeIn'
-            }}
+            key={particle.id}
+            initial={{ x: `${particle.x}%`, y: -20, rotate: 0, opacity: 1 }}
+            animate={{ y: 520, rotate: particle.rotate + 360, opacity: 0 }}
+            transition={{ duration: particle.duration, delay: particle.delay, ease: 'easeIn' }}
             style={{
               position: 'absolute',
-              width: p.size,
-              height: p.size,
-              borderRadius: p.size > 6 ? 2 : '50%',
-              background: p.color,
+              width: particle.size,
+              height: particle.size,
+              borderRadius: particle.size > 6 ? 2 : '50%',
+              background: particle.color,
               zIndex: 10,
               pointerEvents: 'none',
             }}
@@ -169,7 +185,6 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
         ))}
 
         <AnimatePresence mode="wait">
-          {/* Intro phase */}
           {phase === 'intro' && (
             <motion.div
               key="intro"
@@ -178,25 +193,26 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               exit={{ opacity: 0 }}
               style={styles.phaseContent}
             >
+              <div style={styles.topBadge}>
+                <HiMiniSparkles size={14} />
+                <span>{isWeekend ? '周末加码好运' : '今日幸运时刻'}</span>
+              </div>
+
               <div style={styles.introIconWrap}>
                 <motion.div
                   animate={{ scale: [1, 1.12, 1], rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
                   style={styles.introIcon}
                 >
-                  <HiMiniSparkles size={34} />
+                  <HiMiniSparkles size={30} />
                 </motion.div>
               </div>
-              <h2 style={styles.title}>
-                {isWeekend ? '🔥 周末特别抽奖！' : '✨ 打卡抽奖时间！'}
-              </h2>
+
+              <h2 style={styles.title}>{isWeekend ? '周末特别抽奖' : '打卡抽奖时间'}</h2>
               <p style={styles.subtitle}>
-                {isWeekend 
-                  ? '周末也坚持学习，运气一定超好！' 
-                  : '今日打卡完成，来试试手气吧！'}
+                {isWeekend ? '周末也坚持学习，奖励池已经悄悄偏向你。' : '今天的努力已存档，来收下属于你的好运吧。'}
               </p>
-              
-              {/* Prize pool preview */}
+
               <div style={styles.prizePool}>
                 {PRIZE_PREVIEW.map((item) => (
                   <div key={item.label} style={styles.poolItem}>
@@ -209,26 +225,21 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                 ))}
               </div>
 
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={startSpin}
-                style={styles.spinBtn}
-              >
+              <motion.button whileTap={{ scale: 0.94 }} onClick={startSpin} style={styles.spinBtn}>
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
+                  transition={{ duration: 0.6, repeat: Infinity }}
                   style={styles.spinBtnIcon}
                 >
                   <HiMiniSparkles size={16} />
                 </motion.span>
-                {' '}开始抽奖
+                <span>开始抽奖</span>
               </motion.button>
 
               {error && <p style={styles.errorText}>{error}</p>}
             </motion.div>
           )}
 
-          {/* Spinning phase */}
           {phase === 'spinning' && (
             <motion.div
               key="spinning"
@@ -236,37 +247,68 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               animate={{ opacity: 1 }}
               style={styles.phaseContent}
             >
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24 }}>
-                抽奖中...
-              </h3>
-              <div style={styles.slotMachine}>
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    style={styles.slotWindow}
-                  >
-                    <motion.span
-                      key={slotValues[i]}
-                      initial={{ y: -30, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      style={{ fontSize: 48, display: 'block' }}
+              <div style={styles.topBadge}>
+                <HiMiniSparkles size={14} />
+                <span>{spinStage}</span>
+              </div>
+
+              <h3 style={styles.spinningTitle}>幸运转盘运转中</h3>
+
+              <div style={styles.slotMachineWrap}>
+                <div style={styles.slotMachineGlow} />
+                <div style={styles.slotMachine}>
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      style={styles.slotWindow}
+                      animate={{
+                        y: [0, i % 2 === 0 ? -4 : 4, 0],
+                        boxShadow: [
+                          '0 0 0 rgba(255,255,255,0)',
+                          '0 0 20px rgba(255,255,255,0.08)',
+                          '0 0 0 rgba(255,255,255,0)',
+                        ],
+                      }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.12 }}
                     >
-                      {SLOT_ITEMS[slotValues[i]]}
-                    </motion.span>
-                  </motion.div>
+                      <motion.span
+                        key={slotValues[i]}
+                        initial={{ y: -36, opacity: 0, scale: 0.86 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+                        style={styles.slotIcon}
+                      >
+                        {(() => {
+                          const SlotIcon = SLOT_ITEMS[slotValues[i]].icon;
+                          return <SlotIcon size={40} color={SLOT_ITEMS[slotValues[i]].color} />;
+                        })()}
+                      </motion.span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.progressDots}>
+                {[0, 1, 2].map((index) => (
+                  <motion.div
+                    key={index}
+                    animate={{ opacity: [0.25, 1, 0.25], scale: [0.9, 1.1, 0.9] }}
+                    transition={{ duration: 0.9, repeat: Infinity, delay: index * 0.18 }}
+                    style={styles.progressDot}
+                  />
                 ))}
               </div>
+
               <motion.p
                 animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{ duration: 1, repeat: Infinity }}
-                style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 16 }}
+                style={styles.spinningHint}
               >
-                命运的齿轮开始转动...
+                好运会一点点停在正确的位置
               </motion.p>
             </motion.div>
           )}
 
-          {/* Reveal phase */}
           {phase === 'reveal' && prize && (
             <motion.div
               key="reveal"
@@ -275,9 +317,14 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
               transition={{ type: 'spring', bounce: 0.4 }}
               style={styles.phaseContent}
             >
+              <div style={styles.topBadge}>
+                <FiCheckCircle size={14} />
+                <span>奖励已解锁</span>
+              </div>
+
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+                animate={{ scale: [1, 1.08, 1], rotate: [0, 4, -4, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity }}
                 style={{
                   ...styles.prizeIcon,
                   background: PRIZE_COLORS[prize.prizeType]?.bg || PRIZE_COLORS.cash.bg,
@@ -289,20 +336,11 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                 })()}
               </motion.div>
 
-              <motion.h2
-                initial={{ y: 20 }}
-                animate={{ y: 0 }}
-                style={{
-                  ...styles.prizeTitle,
-                  background: PRIZE_COLORS[prize.prizeType]?.bg || PRIZE_COLORS.cash.bg,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                {prize.prizeType === 'ultimate' ? '🏆 终极大奖！！！' :
-                 prize.prizeType === 'custom' ? '🌟 超级幸运！' :
-                 prize.prizeType === 'blindbox' ? '📦 盲盒来啦！' :
-                 '💰 恭喜获奖！'}
+              <motion.h2 initial={{ y: 20 }} animate={{ y: 0 }} style={styles.prizeTitle}>
+                {prize.prizeType === 'ultimate' ? '神秘大礼已揭晓'
+                  : prize.prizeType === 'custom' ? '心愿奖励已命中'
+                  : prize.prizeType === 'blindbox' ? '惊喜盲盒到手'
+                  : '现金奖励已到账'}
               </motion.h2>
 
               <motion.p
@@ -321,16 +359,14 @@ export default function LotteryWheel({ checkinId, isWeekend, onClose }) {
                   transition={{ delay: 0.5, type: 'spring' }}
                   style={styles.amountBadge}
                 >
-                  ¥{prize.amount.toFixed(0)}
+                  <span style={styles.amountUnit}>¥</span>
+                  <span>{prize.amount}</span>
                 </motion.div>
               )}
 
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={onClose}
-                style={styles.closeBtn}
-              >
-                太开心了！收下奖励 🎉
+              <motion.button whileTap={{ scale: 0.95 }} onClick={onClose} style={styles.closeBtn}>
+                <FiGift size={16} />
+                <span>收下奖励</span>
               </motion.button>
             </motion.div>
           )}
@@ -344,24 +380,70 @@ const styles = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.7)',
+    background: 'rgba(10, 10, 26, 0.72)',
     backdropFilter: 'blur(8px)',
     zIndex: 200,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    overflow: 'hidden',
+  },
+  overlayGlowLeft: {
+    position: 'absolute',
+    left: -120,
+    bottom: -80,
+    width: 240,
+    height: 240,
+    borderRadius: '50%',
+    background: 'var(--c-orb1)',
+    filter: 'blur(50px)',
+    pointerEvents: 'none',
+  },
+  overlayGlowRight: {
+    position: 'absolute',
+    right: -100,
+    top: -60,
+    width: 220,
+    height: 220,
+    borderRadius: '50%',
+    background: 'var(--c-orb2)',
+    filter: 'blur(46px)',
+    pointerEvents: 'none',
   },
   container: {
     width: '100%',
-    maxWidth: 380,
-    background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%)',
+    maxWidth: 388,
+    background: 'linear-gradient(180deg, var(--c-card-solid) 0%, rgba(255,255,255,0.03) 100%)',
     borderRadius: 28,
-    padding: '32px 24px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    padding: '30px 24px',
+    border: '1px solid var(--c-border)',
     position: 'relative',
     overflow: 'hidden',
-    minHeight: 400,
+    minHeight: 420,
+    boxShadow: 'var(--c-shadow-lg)',
+    backdropFilter: 'blur(24px)',
+  },
+  panelGlow: {
+    position: 'absolute',
+    inset: 'auto auto -80px -40px',
+    width: 220,
+    height: 220,
+    borderRadius: '50%',
+    background: 'var(--c-gradient2)',
+    filter: 'blur(34px)',
+    opacity: 0.7,
+    pointerEvents: 'none',
+  },
+  panelOrbit: {
+    position: 'absolute',
+    top: 12,
+    right: 20,
+    width: 72,
+    height: 72,
+    borderRadius: '50%',
+    border: '1px dashed rgba(255,255,255,0.08)',
+    pointerEvents: 'none',
   },
   phaseContent: {
     display: 'flex',
@@ -369,6 +451,20 @@ const styles = {
     alignItems: 'center',
     textAlign: 'center',
     gap: 12,
+    position: 'relative',
+    zIndex: 1,
+  },
+  topBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '7px 12px',
+    borderRadius: 999,
+    background: 'var(--c-primary-bg)',
+    color: 'var(--primary-light)',
+    fontSize: 11,
+    fontWeight: 700,
+    border: '1px solid var(--c-border)',
   },
   introIconWrap: {
     width: 84,
@@ -378,8 +474,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    marginBottom: 4,
+    border: '1px solid var(--c-border)',
+    marginBottom: 2,
   },
   introIcon: {
     width: 58,
@@ -390,47 +486,49 @@ const styles = {
     justifyContent: 'center',
     background: 'linear-gradient(135deg, var(--primary), var(--accent))',
     color: '#fff',
-    boxShadow: '0 12px 26px rgba(124, 92, 252, 0.24)',
+    boxShadow: '0 12px 26px var(--c-glow)',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 800,
-    marginTop: 8,
+    marginTop: 4,
+    color: 'var(--text-primary)',
   },
   subtitle: {
     fontSize: 14,
     color: 'var(--text-secondary)',
+    lineHeight: 1.6,
   },
   prizePool: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: 12,
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 10,
     width: '100%',
   },
   poolItem: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 4,
-    fontSize: 24,
+    gap: 5,
     textAlign: 'center',
     padding: '12px 10px',
-    borderRadius: 16,
+    borderRadius: 18,
     background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    minHeight: 96,
+    border: '1px solid var(--c-border)',
+    minHeight: 98,
+    backdropFilter: 'blur(10px)',
   },
   poolItemIcon: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    background: 'rgba(255,255,255,0.08)',
+    background: 'var(--c-primary-bg)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#fff',
+    color: 'var(--primary-light)',
   },
   poolItemTitle: {
     fontSize: 13,
@@ -439,18 +537,18 @@ const styles = {
   },
   poolItemDetail: {
     fontSize: 11,
-    lineHeight: 1.4,
+    lineHeight: 1.45,
     color: 'var(--text-muted)',
   },
   spinBtn: {
     marginTop: 8,
-    padding: '16px 40px',
+    padding: '15px 36px',
     borderRadius: 18,
     background: 'linear-gradient(135deg, var(--primary), var(--accent))',
     color: '#fff',
     fontWeight: 800,
-    fontSize: 18,
-    boxShadow: '0 8px 30px rgba(124, 92, 252, 0.4)',
+    fontSize: 17,
+    boxShadow: '0 10px 32px var(--c-glow)',
     animation: 'pulse-glow 2s infinite',
     display: 'inline-flex',
     alignItems: 'center',
@@ -468,9 +566,9 @@ const styles = {
     width: 38,
     height: 38,
     borderRadius: 19,
-    border: '1px solid rgba(255,255,255,0.12)',
+    border: '1px solid var(--c-border)',
     background: 'rgba(255,255,255,0.06)',
-    color: '#fff',
+    color: 'var(--text-primary)',
     fontSize: 18,
     lineHeight: 1,
     zIndex: 20,
@@ -478,34 +576,86 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  spinningTitle: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: 'var(--text-primary)',
+    marginTop: 2,
+  },
+  slotMachineWrap: {
+    width: '100%',
+    position: 'relative',
+    marginTop: 8,
+    padding: '18px 14px',
+    borderRadius: 24,
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid var(--c-border)',
+    overflow: 'hidden',
+  },
+  slotMachineGlow: {
+    position: 'absolute',
+    inset: 'auto 10% -40px 10%',
+    height: 80,
+    background: 'var(--c-gradient2)',
+    filter: 'blur(24px)',
+    opacity: 0.7,
+  },
   slotMachine: {
     display: 'flex',
     gap: 12,
     justifyContent: 'center',
+    position: 'relative',
+    zIndex: 1,
   },
   slotWindow: {
-    width: 80,
-    height: 90,
-    borderRadius: 16,
-    background: 'rgba(255,255,255,0.06)',
-    border: '2px solid rgba(255,255,255,0.15)',
+    width: 82,
+    height: 94,
+    borderRadius: 18,
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04))',
+    border: '1px solid rgba(255,255,255,0.12)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    backdropFilter: 'blur(10px)',
+  },
+  slotIcon: {
+    fontSize: 48,
+    display: 'block',
+    filter: 'drop-shadow(0 4px 14px rgba(255,255,255,0.18))',
+  },
+  progressDots: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+  },
+  spinningHint: {
+    fontSize: 13,
+    color: 'var(--text-secondary)',
+    marginTop: 4,
   },
   prizeIcon: {
-    width: 100,
-    height: 100,
+    width: 102,
+    height: 102,
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 8px 40px rgba(124, 92, 252, 0.4)',
+    boxShadow: '0 16px 44px var(--c-glow)',
   },
   prizeTitle: {
     fontSize: 24,
     fontWeight: 900,
+    background: 'linear-gradient(135deg, var(--text-primary), var(--primary-light), var(--accent))',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   prizeDetail: {
     fontSize: 15,
@@ -514,21 +664,35 @@ const styles = {
     padding: '0 8px',
   },
   amountBadge: {
-    fontSize: 36,
+    display: 'inline-flex',
+    alignItems: 'flex-start',
+    gap: 3,
+    padding: '10px 18px',
+    borderRadius: 999,
+    fontSize: 34,
     fontWeight: 900,
     color: 'var(--warning)',
     textShadow: '0 2px 10px rgba(251, 191, 36, 0.3)',
     marginTop: 4,
+    background: 'rgba(251,191,36,0.1)',
+    border: '1px solid rgba(251,191,36,0.22)',
+  },
+  amountUnit: {
+    fontSize: 18,
+    marginTop: 6,
   },
   closeBtn: {
     marginTop: 16,
-    padding: '14px 32px',
+    padding: '14px 30px',
     borderRadius: 16,
     background: 'linear-gradient(135deg, var(--success), #06b6d4)',
     color: '#fff',
     fontWeight: 700,
     fontSize: 15,
     boxShadow: '0 4px 20px rgba(52, 211, 153, 0.3)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
   },
   errorText: {
     fontSize: 13,

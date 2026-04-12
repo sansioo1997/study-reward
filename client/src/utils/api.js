@@ -69,4 +69,8 @@ export const api = {
 
   // Records
   getRecords: () => request('/records'),
+  deleteRecord: (id) =>
+    request(`/records/${id}`, {
+      method: 'DELETE'
+    }),
 };
