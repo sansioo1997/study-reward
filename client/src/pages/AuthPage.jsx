@@ -5,8 +5,7 @@ import { api } from '../utils/api';
 import { useTheme } from '../utils/theme';
 
 const QUOTES = [
-  "输入专属口号，开启学习之旅 ✨",
-  "只有最特别的人才能进入 💫",
+  "输入专属口号，开启学习打卡之旅",
 ];
 
 export default function AuthPage({ onSuccess }) {
@@ -68,12 +67,12 @@ export default function AuthPage({ onSuccess }) {
           style={styles.logoContainer}
         >
           <span style={styles.logo}>
-            <span style={styles.logoCat}>(=^・ω・^=)</span>
+            <span style={styles.logoCat}>(=^.^=)</span>
           </span>
         </motion.div>
 
         <h1 style={styles.title}>
-          <span className="gradient-text">LY 加油!</span>
+          <span className="gradient-text">LY 加油!!</span>
         </h1>
         
         <p style={styles.subtitle}>{QUOTES[0]}</p>
@@ -93,7 +92,7 @@ export default function AuthPage({ onSuccess }) {
               type="text"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="人生态度"
+              placeholder="专属口号"
               style={styles.input}
               autoComplete="off"
               autoFocus
@@ -111,7 +110,7 @@ export default function AuthPage({ onSuccess }) {
               opacity: loading || !passphrase.trim() ? 0.5 : 1,
             }}
           >
-            <span>{loading ? '验证中...' : '进入学习空间'}</span>
+            <span>{loading ? '验证中...' : '进入学习打卡空间'}</span>
             {loading ? (
               <motion.span
                 animate={{ rotate: 360 }}
@@ -240,7 +239,8 @@ const styles = {
   },
   input: {
     width: '100%',
-    padding: '16px 20px 16px 46px',
+    // Keep left/right padding symmetric so centered placeholder ignores the left icon visually.
+    padding: '16px 46px 16px 46px',
     fontSize: 16,
     borderRadius: 18,
     background: 'var(--bg-card)',

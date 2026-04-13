@@ -121,9 +121,141 @@ const CATS = {
     msgs: ['今天也被我守护着', '顺顺利利，平平安安', '愿你心里有光', '给你一份温柔好运'],
     anim: { y: [0, -10, 0], scale: [1, 1.03, 1] },
   },
+  wink: {
+    frames: [
+      { face: '(=^_~=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   给你眨眼' },
+      { face: '(=^_－=)☆', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   收到暗号啦' },
+    ],
+    msgs: ['偷偷给你一个 wink', '我在给你加油哦', '收到猫咪暗号没？'],
+    anim: { rotate: [0, -4, 4, 0], y: [0, -5, 0] },
+  },
+  cheer: {
+    frames: [
+      { face: '(=•̀ω•́=)و', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   冲呀冲呀' },
+      { face: '(=ง •̀_•́)ง', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   我来助威' },
+    ],
+    msgs: ['打起精神来！', '今天也稳稳前进', '你离目标更近啦'],
+    anim: { y: [0, -14, 0], scale: [1, 1.06, 1] },
+  },
+  stretch: {
+    frames: [
+      { face: '(=^-ω-^=)~', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   伸个懒腰' },
+      { face: '(=￣ω￣=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   松松肩膀' },
+    ],
+    msgs: ['陪你一起拉伸一下', '放松一下再继续', '稳稳地学，也要稳稳地歇'],
+    anim: { x: [0, -6, 6, 0], y: [0, -4, 0] },
+  },
+  purr: {
+    frames: [
+      { face: '(=˘ω˘=)~♡', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   呼噜呼噜' },
+      { face: '(=①ω①=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   超满足喵' },
+    ],
+    msgs: ['呼噜呼噜陪着你', '安静努力也很棒', '认真时最迷人啦'],
+    anim: { scale: [1, 1.04, 1], y: [0, -3, 0] },
+  },
+  guard: {
+    frames: [
+      { face: '(=•̀ㅅ•́=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   巡逻中...' },
+      { face: '(=•̀д•́=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   替你站岗' },
+    ],
+    msgs: ['学习区安全，继续前进', '我来守着你的专注', '今天不让懒惰靠近'],
+    anim: { x: [0, -5, 5, 0], rotate: [0, -2, 2, 0] },
+  },
+  focus: {
+    frames: [
+      { face: '(=•̀ᴗ•́=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   专注模式' },
+      { face: '(=•̀ω•́=)✎', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   认真喵喵' },
+    ],
+    msgs: ['我陪你一起进入状态', '先做眼前这一小步', '专注五分钟也很厉害'],
+    anim: { scale: [1, 1.03, 1], y: [0, -4, 0] },
+  },
+  wish: {
+    frames: [
+      { face: '(=ˊᗜˋ=)', body: '   ☆\n  /ᐠ｡ꞈ｡ᐟ\\\n   许个愿吧' },
+      { face: '(=ˊᵕˋ=)☆', body: '   ✨\n  /ᐠ｡ꞈ｡ᐟ\\\n   好运加一' },
+    ],
+    msgs: ['把愿望悄悄放进口袋', '今天也会有好消息', '努力和好运都在路上'],
+    anim: { y: [0, -11, 0], scale: [1, 1.05, 1] },
+  },
+  bounce: {
+    frames: [
+      { face: '(=^･ω･^=)੭', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   弹弹弹!' },
+      { face: '(=^･o･^=)੭', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   跳一下~' },
+    ],
+    msgs: ['给你一点元气弹跳', '轻轻一跳，烦恼飞掉', '猫猫弹跳加持中'],
+    anim: { y: [0, -18, 0, -8, 0], scale: [1, 1.05, 0.98, 1.03, 1] },
+  },
+  cozy: {
+    frames: [
+      { face: '(=˘⌣˘=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   暖暖陪伴' },
+      { face: '(=´ω｀=)', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   软软守候' },
+    ],
+    msgs: ['慢慢来也很棒', '你可以温柔但坚定', '今天也要照顾好自己'],
+    anim: { y: [0, -5, 0], scale: [1, 1.02, 1] },
+  },
+  salute: {
+    frames: [
+      { face: '(=｀ω´=)ゞ', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   猫式敬礼' },
+      { face: '(=•̀ω•́=)ゝ', body: '  /ᐠ｡ꞈ｡ᐟ\\\n   收到任务' },
+    ],
+    msgs: ['收到，继续努力', '向坚持的你敬礼', '任务已确认，前进喵'],
+    anim: { rotate: [0, -3, 3, 0], y: [0, -8, 0] },
+  },
 };
 
-const TOUCH_POOL = ['happy', 'love', 'paw', 'excited', 'proud', 'cuddle', 'shy', 'peek', 'snack'];
+const TOUCH_POOL = ['happy', 'love', 'paw', 'excited', 'proud', 'cuddle', 'shy', 'peek', 'snack', 'wink', 'cheer', 'stretch', 'purr', 'guard', 'focus', 'wish', 'bounce', 'cozy', 'salute'];
+const INTERACTION_SCENES = [
+  { mood: 'happy', message: '你一摸我就开心到冒泡啦' },
+  { mood: 'love', message: '今天先给你一个爱心贴贴' },
+  { mood: 'paw', message: '肉球签到成功，喵!' },
+  { mood: 'excited', message: '检测到认真学习的人类靠近中' },
+  { mood: 'proud', message: '今天的你值得一枚小奖章' },
+  { mood: 'cuddle', message: '来，给努力的你一个抱抱' },
+  { mood: 'shy', message: '你突然摸我，我会害羞啦' },
+  { mood: 'peek', message: '巡逻的猫猫发现你在努力' },
+  { mood: 'snack', message: '今日奖励是一份鱼干鼓励' },
+  { mood: 'angel', message: '好运小天使猫猫已上线' },
+  { mood: 'wink', message: '给你一个悄悄加油的眨眼' },
+  { mood: 'cheer', message: '这一局，我押你一定能行' },
+  { mood: 'stretch', message: '先松松肩膀，再继续冲刺' },
+  { mood: 'purr', message: '呼噜声里全是对你的夸奖' },
+  { mood: 'guard', message: '别担心，我替你守住专注' },
+  { mood: 'focus', message: '现在是认真发光时间' },
+  { mood: 'wish', message: '悄悄许愿，今天会有收获' },
+  { mood: 'bounce', message: '给你补一颗元气弹跳球' },
+  { mood: 'cozy', message: '慢一点，也是在向前走' },
+  { mood: 'salute', message: '向今天没放弃的你敬礼' },
+  { mood: 'happy', message: '喵喵认定你是今日最佳努力家' },
+  { mood: 'love', message: '认真学习的人最值得被偏爱' },
+  { mood: 'paw', message: '本猫宣布这次摸摸非常合格' },
+  { mood: 'excited', message: '听见梦想靠近的声音啦' },
+  { mood: 'proud', message: '请收下猫猫颁发的闪亮认证' },
+  { mood: 'cuddle', message: '再坚持一下，我就继续贴贴你' },
+  { mood: 'shy', message: '你夸我可爱，我会更害羞的' },
+  { mood: 'peek', message: '偷看一眼，发现你还在努力' },
+  { mood: 'snack', message: '奖励加餐是鼓励和小鱼干' },
+  { mood: 'angel', message: '愿你今天也顺顺利利' },
+  { mood: 'wink', message: '秘密提示：你真的进步了' },
+  { mood: 'cheer', message: '打起精神，下一步就会更顺' },
+  { mood: 'stretch', message: '伸个懒腰，继续慢慢变强' },
+  { mood: 'purr', message: '我在这里陪你稳定输出' },
+  { mood: 'guard', message: '已经把拖延挡在门外啦' },
+  { mood: 'focus', message: '这一分钟，先只做好一件事' },
+  { mood: 'wish', message: '把今天的期待交给时间发芽' },
+  { mood: 'bounce', message: '轻轻一跳，烦躁都弹走啦' },
+  { mood: 'cozy', message: '你不用很急，也能很坚定' },
+  { mood: 'salute', message: '为今天继续出发的你鼓掌' },
+  { mood: 'happy', message: '好耶，又收获一次温柔互动' },
+  { mood: 'love', message: '猫猫觉得你今天特别发光' },
+  { mood: 'paw', message: '送你一枚软乎乎的肉球印章' },
+  { mood: 'excited', message: '前方发现好运和成果正在靠近' },
+  { mood: 'proud', message: '你认真起来的样子很值得骄傲' },
+  { mood: 'cuddle', message: '学习也要被好好抱一抱' },
+  { mood: 'wink', message: '悄悄说，你比昨天更棒了' },
+  { mood: 'focus', message: '继续保持，这股劲头很好' },
+  { mood: 'guard', message: '猫猫站岗中，请放心专注' },
+  { mood: 'wish', message: '把这次摸摸变成今天的小幸运' },
+];
 const HEART_PARTICLES = ['💕', '♡', '💗', '✨', '⭐', '🩷', '💖', '❣️', '🎀', '🫧'];
 const FLOAT_PARTICLES = ['🐾', '✨', '⭐', '💫', '🎀', '🐟'];
 const INTERACTION_SETTLE_MS = 9000;
@@ -159,9 +291,9 @@ export default function CatPet({ mood = 'idle', onInteract }) {
     return () => clearInterval(frameTimer.current);
   }, [curMood]);
 
-  const showRandomMsg = useCallback((m) => {
+  const showRandomMsg = useCallback((m, overrideMessage) => {
     const cat = CATS[m || curMood] || CATS.idle;
-    setMsg(cat.msgs[Math.floor(Math.random() * cat.msgs.length)]);
+    setMsg(overrideMessage || cat.msgs[Math.floor(Math.random() * cat.msgs.length)]);
     setShowMsg(true);
     clearTimeout(msgTimer.current);
     msgTimer.current = setTimeout(() => setShowMsg(false), 2200);
@@ -233,17 +365,20 @@ export default function CatPet({ mood = 'idle', onInteract }) {
       }
     }
 
-    let nextMood;
-    if (nextTapCount % 18 === 0) nextMood = 'angel';
-    else if (nextTapCount % 15 === 0) nextMood = 'spin';
-    else if (nextTapCount % 11 === 0) nextMood = 'roll';
-    else if (nextTapCount % 7 === 0) nextMood = 'love';
-    else if (nextTapCount % 5 === 0) nextMood = 'cuddle';
-    else if (nextTapCount % 4 === 0) nextMood = 'shy';
-    else nextMood = TOUCH_POOL[Math.floor(Math.random() * TOUCH_POOL.length)];
+    let scene;
+    if (nextTapCount % 21 === 0) scene = { mood: 'angel', message: '连续贴贴成就达成，送你一圈好运光环' };
+    else if (nextTapCount % 16 === 0) scene = { mood: 'spin', message: '猫猫开心到原地转圈圈啦' };
+    else if (nextTapCount % 12 === 0) scene = { mood: 'roll', message: '奖励你一只打滚庆祝的猫猫' };
+    else if (nextTapCount % 9 === 0) scene = { mood: 'love', message: '今天的坚持值得一大团爱心' };
+    else {
+      const randomOffset = Math.floor(Math.random() * INTERACTION_SCENES.length);
+      scene = INTERACTION_SCENES[(nextTapCount + randomOffset) % INTERACTION_SCENES.length];
+    }
+
+    const nextMood = scene?.mood || TOUCH_POOL[Math.floor(Math.random() * TOUCH_POOL.length)];
 
     setCurMood(nextMood);
-    showRandomMsg(nextMood);
+    showRandomMsg(nextMood, scene?.message);
     onInteract?.();
     scheduleSettleBack();
   }, [taps, showRandomMsg, onInteract, scheduleSettleBack]);
