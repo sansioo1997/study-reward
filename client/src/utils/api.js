@@ -59,6 +59,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ studyHours, mood, message })
     }),
+  checkinMakeup: (date, studyHours, mood, message) =>
+    request('/checkin/makeup', {
+      method: 'POST',
+      body: JSON.stringify({ date, studyHours, mood, message })
+    }),
+  getRecordByDate: (date) => request(`/records/by-date?date=${encodeURIComponent(date)}`),
 
   // Lottery
   lottery: (checkinId) =>

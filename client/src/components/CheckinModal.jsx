@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiBookOpen,
   FiChevronLeft,
   FiChevronRight,
+  FiCalendar,
   FiClock,
   FiEdit3,
   FiHeart,
@@ -26,13 +27,40 @@ const MOODS = [
 
 const HOUR_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12];
 
-export default function CheckinModal({ onClose, onComplete, catMood, setCatMood }) {
+function getTodayStr() {
+  // Align with backend (+08:00) so date comparison and "future" checks behave consistently.
+  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+}
+
+function getYesterdayStr() {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+}
+
+function addDays(dateStr, delta) {
+  const t = new Date(`${dateStr}T00:00:00+08:00`).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  return new Date(t + delta * dayMs).toISOString().split('T')[0];
+}
+
+export default function CheckinModal({
+  onClose,
+  onComplete,
+  catMood,
+  setCatMood,
+  mode = 'today', // 'today' | 'makeup'
+  initialDate,
+}) {
   const [step, setStep] = useState(1); // 1: hours, 2: mood, 3: message, 4: confirm
   const [studyHours, setStudyHours] = useState(null);
   const [selectedMood, setSelectedMood] = useState(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const dateInputRef = useRef(null);
+  const [checkinDate, setCheckinDate] = useState(() => {
+    if (initialDate) return initialDate;
+    return mode === 'makeup' ? getYesterdayStr() : getTodayStr();
+  });
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 430,
     height: typeof window !== 'undefined' ? window.innerHeight : 932,
@@ -77,13 +105,19 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
   }, []);
 
   const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
+  const isMakeup = mode === 'makeup';
+  const maxDate = getTodayStr();
+  const quickDays = isCompactViewport ? 12 : 14;
 
   const handleSubmit = async () => {
     if (!studyHours || !selectedMood) return;
+    if (isMakeup && !checkinDate) return;
     setLoading(true);
     setError('');
     try {
-      const result = await api.checkin(studyHours, selectedMood, message);
+      const result = isMakeup
+        ? await api.checkinMakeup(checkinDate, studyHours, selectedMood, message)
+        : await api.checkin(studyHours, selectedMood, message);
       onComplete(result);
     } catch (err) {
       setError(err.message);
@@ -113,6 +147,106 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
         <div style={styles.sheetOrbit} />
         {/* Handle */}
         <div style={styles.handle} />
+
+        {isMakeup && (
+          <div className="glass-card" style={{ ...styles.dateCard, ...(isCompactViewport ? styles.dateCardCompact : null) }}>
+            <div style={styles.dateCardTop}>
+              <span style={styles.dateCardTitle}>
+                <FiCalendar size={14} />
+                <span>补卡日期</span>
+              </span>
+              <span style={styles.dateCardHint}>仅支持今天及以前</span>
+            </div>
+
+            <div style={{ ...styles.dateRow, ...(isCompactViewport ? styles.dateRowCompact : null) }}>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setCheckinDate((d) => addDays(d, -1))}
+                style={{ ...styles.dateNavBtn, ...(isCompactViewport ? styles.dateNavBtnCompact : null) }}
+                aria-label="前一天"
+              >
+                <FiChevronLeft size={18} />
+              </motion.button>
+
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  const el = dateInputRef.current;
+                  if (!el) return;
+                  // iOS Safari supports the native picker on focus/click; Chrome supports showPicker.
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.click();
+                }}
+                style={{ ...styles.dateMainBtn, ...(isCompactViewport ? styles.dateMainBtnCompact : null) }}
+              >
+                <span style={styles.dateMainTitle}>当前选择</span>
+                <span style={styles.dateMainValue}>{checkinDate}</span>
+              </motion.button>
+
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setCheckinDate((d) => (d >= maxDate ? d : addDays(d, 1)))}
+                disabled={checkinDate >= maxDate}
+                style={{
+                  ...styles.dateNavBtn,
+                  ...(isCompactViewport ? styles.dateNavBtnCompact : null),
+                  opacity: checkinDate >= maxDate ? 0.45 : 1,
+                }}
+                aria-label="后一天"
+              >
+                <FiChevronRight size={18} />
+              </motion.button>
+
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={checkinDate}
+                onChange={(e) => setCheckinDate(e.target.value)}
+                max={maxDate}
+                style={styles.dateNativeInput}
+                aria-label="选择补卡日期"
+              />
+            </div>
+
+            <div style={styles.quickRow}>
+              {Array.from({ length: quickDays }).map((_, i) => {
+                const d = addDays(maxDate, -(quickDays - 1 - i));
+                const active = d === checkinDate;
+                return (
+                  <motion.button
+                    key={d}
+                    type="button"
+                    whileTap={{ scale: 0.94 }}
+                    onClick={() => setCheckinDate(d)}
+                    style={{
+                      ...styles.quickChip,
+                      ...(active ? styles.quickChipActive : null),
+                    }}
+                    aria-label={`选择日期 ${d}`}
+                  >
+                    {d.slice(5)}
+                  </motion.button>
+                );
+              })}
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.94 }}
+                onClick={() => {
+                  const el = dateInputRef.current;
+                  if (!el) return;
+                  if (typeof el.showPicker === 'function') el.showPicker();
+                  else el.click();
+                }}
+                style={styles.quickMore}
+              >
+                更多日期
+              </motion.button>
+            </div>
+          </div>
+        )}
 
         {/* Progress */}
         <div style={{ ...styles.progress, ...(isCompactViewport ? styles.progressCompact : null) }}>
@@ -300,6 +434,17 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
 
               {/* Summary */}
               <div className="glass-card" style={{ ...styles.summary, ...(isCompactViewport ? styles.summaryCompact : null) }}>
+                {isMakeup && (
+                  <div style={{ ...styles.summaryRow, ...(isCompactViewport ? styles.summaryRowCompact : null) }}>
+                    <span style={{ ...styles.summaryLabel, ...(isCompactViewport ? styles.summaryLabelCompact : null) }}>
+                      <FiClock size={14} />
+                      <span>补卡日期</span>
+                    </span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: isCompactViewport ? 13 : 14 }}>
+                      {checkinDate}
+                    </span>
+                  </div>
+                )}
                 <div style={{ ...styles.summaryRow, ...(isCompactViewport ? styles.summaryRowCompact : null) }}>
                   <span style={{ ...styles.summaryLabel, ...(isCompactViewport ? styles.summaryLabelCompact : null) }}>
                     <FiClock size={14} />
@@ -338,7 +483,7 @@ export default function CheckinModal({ onClose, onComplete, catMood, setCatMood 
                   ) : (
                     <>
                       <FiSend size={15} />
-                      <span>确认打卡</span>
+                      <span>{isMakeup ? '确认补卡' : '确认打卡'}</span>
                     </>
                   )}
                 </motion.button>
@@ -435,6 +580,140 @@ const styles = {
     margin: '0 auto 16px',
     position: 'relative',
     zIndex: 1,
+  },
+  dateCard: {
+    width: '100%',
+    padding: '12px 12px 10px',
+    marginBottom: 12,
+  },
+  dateCardCompact: {
+    padding: '10px 10px 9px',
+    marginBottom: 10,
+  },
+  dateCardTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+  },
+  dateCardTitle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 13,
+    fontWeight: 800,
+    color: 'var(--text-primary)',
+  },
+  dateCardHint: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+  },
+  dateRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+    padding: 0,
+    position: 'relative',
+    zIndex: 1,
+  },
+  dateRowCompact: {
+    marginBottom: 10,
+  },
+  dateNavBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-card)',
+    color: 'var(--text-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: 'var(--shadow)',
+  },
+  dateNavBtnCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+  },
+  dateMainBtn: {
+    flex: 1,
+    minWidth: 0,
+    height: 44,
+    borderRadius: 14,
+    border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.05)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: '0 14px',
+    boxShadow: 'var(--shadow)',
+  },
+  dateMainBtnCompact: {
+    height: 40,
+    borderRadius: 12,
+    padding: '0 12px',
+  },
+  dateMainTitle: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: 'var(--text-secondary)',
+    whiteSpace: 'nowrap',
+  },
+  dateMainValue: {
+    fontSize: 15,
+    fontWeight: 900,
+    color: 'var(--text-primary)',
+    whiteSpace: 'nowrap',
+  },
+  quickRow: {
+    display: 'flex',
+    gap: 8,
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    paddingBottom: 2,
+  },
+  quickChip: {
+    flex: '0 0 auto',
+    padding: '9px 12px',
+    borderRadius: 999,
+    border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.04)',
+    color: 'var(--text-secondary)',
+    fontSize: 12,
+    fontWeight: 800,
+    minWidth: 70,
+    textAlign: 'center',
+    boxShadow: 'var(--shadow)',
+  },
+  quickChipActive: {
+    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,0.18)',
+  },
+  quickMore: {
+    flex: '0 0 auto',
+    padding: '9px 12px',
+    borderRadius: 999,
+    border: '1px dashed var(--border)',
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    fontSize: 12,
+    fontWeight: 800,
+    minWidth: 80,
+  },
+  dateNativeInput: {
+    // keep native picker available for accessibility + iOS, but hide it visually
+    position: 'absolute',
+    inset: 0,
+    opacity: 0,
+    pointerEvents: 'none',
   },
   progress: {
     display: 'flex',

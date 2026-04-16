@@ -138,6 +138,7 @@ function formatDate(d) {
 
 export default function HomePage({ stats, refreshStats, onNavigate }) {
   const [showCheckin, setShowCheckin] = useState(false);
+  const [showMakeupCheckin, setShowMakeupCheckin] = useState(false);
   const [showLottery, setShowLottery] = useState(false);
   const [checkinResult, setCheckinResult] = useState(null);
   const [catMood, setCatMood] = useState('idle');
@@ -216,6 +217,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
       checkinId: Number(result?.checkinId),
     });
     setShowCheckin(false);
+    setShowMakeupCheckin(false);
     holdCelebrationMood(result.isWeekend ? 'super_excited' : 'happy', result.isWeekend ? 18000 : 14000);
     refreshStats();
     // Auto show lottery after a delay
@@ -300,6 +302,22 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
               aria-label="切换配色主题"
             >
               <span>{themeMeta[theme]?.icon || '🎨'}</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                setShowMakeupCheckin(true);
+                clearTimeout(moodResetTimerRef.current);
+                setCatMood('focus');
+              }}
+              style={{
+                ...styles.recordBtn,
+                ...(isCompactViewport ? styles.recordBtnCompact : null),
+              }}
+              aria-label="补卡"
+              title="补卡"
+            >
+              <FiCalendar size={18} />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.9 }}
@@ -432,7 +450,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           })}
         </motion.div>
 
-        {/* Streak progress to ultimate prize */}
+        {/* Total days progress to ultimate prize */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -450,20 +468,20 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
               </div>
               <span style={{ fontSize: 14, fontWeight: 700 }}>神秘大礼进度</span>
             </div>
-            <span style={styles.streakCount}>{stats?.streak?.current_streak || 0}/25天</span>
+            <span style={styles.streakCount}>{stats?.streak?.total_days || 0}/25天</span>
           </div>
           <div style={styles.progressBar}>
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${Math.min(((stats?.streak?.current_streak || 0) / 25) * 100, 100)}%` }}
+              animate={{ width: `${Math.min(((stats?.streak?.total_days || 0) / 25) * 100, 100)}%` }}
               transition={{ duration: 1, delay: 0.5 }}
               style={styles.progressFill}
             />
           </div>
           <div style={styles.streakFooter}>
-            <p style={{ fontSize: isCompactViewport ? 10 : 11, color: 'var(--text-muted)' }}>连续打卡25天解锁神秘大礼</p>
+            <p style={{ fontSize: isCompactViewport ? 10 : 11, color: 'var(--text-muted)' }}>累计打卡25天解锁神秘大礼</p>
             <span style={styles.streakRemain}>
-              {stats?.streak?.current_streak >= 25 ? '已达成目标' : `还差 ${Math.max(25 - (stats?.streak?.current_streak || 0), 0)} 天`}
+              {(stats?.streak?.total_days || 0) >= 25 ? '已达成目标' : `还差 ${Math.max(25 - (stats?.streak?.total_days || 0), 0)} 天`}
             </span>
           </div>
         </motion.div>
@@ -562,56 +580,86 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
               >
                 明天继续加油哦！
               </p>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  setShowMakeupCheckin(true);
+                  clearTimeout(moodResetTimerRef.current);
+                  setCatMood('focus');
+                }}
+                style={{
+                  ...styles.makeupBtn,
+                  ...(isCompactViewport ? styles.makeupBtnCompact : null),
+                }}
+              >
+                <span>补卡</span>
+              </motion.button>
             </div>
           ) : (
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => {
-                setShowCheckin(true);
-                clearTimeout(moodResetTimerRef.current);
-                setCatMood('excited');
-              }}
+            <div style={styles.actionButtons}>
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => {
+                  setShowCheckin(true);
+                  clearTimeout(moodResetTimerRef.current);
+                  setCatMood('excited');
+                }}
+                style={{
+                  ...styles.checkinBtn,
+                  ...(isCompactViewport ? styles.checkinBtnCompact : null),
+                  ...(isUltraCompactViewport ? styles.checkinBtnUltraCompact : null),
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.checkinBtnIcon,
+                    ...(isCompactViewport ? styles.checkinBtnIconCompact : null),
+                  }}
+                >
+                  <FiBookOpen size={18} />
+                </div>
+                <span
+                  style={{
+                    ...styles.checkinBtnText,
+                    ...(isCompactViewport ? styles.checkinBtnTextCompact : null),
+                  }}
+                >
+                  开始打卡
+                </span>
+                <span
+                  style={{
+                    ...styles.checkinBtnSub,
+                    ...(isCompactViewport ? styles.checkinBtnSubCompact : null),
+                  }}
+                >
+                  记录今天的努力
+                </span>
+                <div
+                  style={{
+                    ...styles.checkinBtnArrow,
+                    ...(isCompactViewport ? styles.checkinBtnArrowCompact : null),
+                  }}
+                >
+                  <FiArrowRight size={16} />
+                </div>
+                <div style={styles.btnShine} />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  setShowMakeupCheckin(true);
+                  clearTimeout(moodResetTimerRef.current);
+                  setCatMood('focus');
+                }}
               style={{
-                ...styles.checkinBtn,
-                ...(isCompactViewport ? styles.checkinBtnCompact : null),
-                ...(isUltraCompactViewport ? styles.checkinBtnUltraCompact : null),
+                  ...styles.makeupBtn,
+                  ...(isCompactViewport ? styles.makeupBtnCompact : null),
               }}
             >
-              <div
-                style={{
-                  ...styles.checkinBtnIcon,
-                  ...(isCompactViewport ? styles.checkinBtnIconCompact : null),
-                }}
-              >
-                <FiBookOpen size={18} />
-              </div>
-              <span
-                style={{
-                  ...styles.checkinBtnText,
-                  ...(isCompactViewport ? styles.checkinBtnTextCompact : null),
-                }}
-              >
-                开始打卡
-              </span>
-              <span
-                style={{
-                  ...styles.checkinBtnSub,
-                  ...(isCompactViewport ? styles.checkinBtnSubCompact : null),
-                }}
-              >
-                记录今天的努力
-              </span>
-              <div
-                style={{
-                  ...styles.checkinBtnArrow,
-                  ...(isCompactViewport ? styles.checkinBtnArrowCompact : null),
-                }}
-              >
-                <FiArrowRight size={16} />
-              </div>
-              <div style={styles.btnShine} />
-            </motion.button>
+                <span>补卡</span>
+              </motion.button>
+            </div>
           )}
         </motion.div>
       </div>
@@ -621,6 +669,15 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
         {showCheckin && (
           <CheckinModal
             onClose={() => { setShowCheckin(false); setCatMood('idle'); }}
+            onComplete={handleCheckinComplete}
+            catMood={catMood}
+            setCatMood={setCatMood}
+          />
+        )}
+        {showMakeupCheckin && (
+          <CheckinModal
+            mode="makeup"
+            onClose={() => { setShowMakeupCheckin(false); setCatMood('idle'); }}
             onComplete={handleCheckinComplete}
             catMood={catMood}
             setCatMood={setCatMood}
@@ -1040,6 +1097,13 @@ const styles = {
     marginTop: 'auto',
     flexShrink: 0,
   },
+  actionButtons: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+  },
   actionAreaCompact: {
     paddingTop: 0,
   },
@@ -1049,6 +1113,25 @@ const styles = {
   },
   checkedContainerCompact: {
     paddingBottom: 2,
+  },
+  makeupBtn: {
+    marginTop: 10,
+    minWidth: 110,
+    padding: '9px 16px',
+    borderRadius: 14,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-card)',
+    color: 'var(--text-secondary)',
+    fontSize: 13,
+    fontWeight: 700,
+    boxShadow: 'var(--shadow)',
+  },
+  makeupBtnCompact: {
+    marginTop: 8,
+    minWidth: 96,
+    padding: '8px 14px',
+    borderRadius: 12,
+    fontSize: 12,
   },
   checkedBadge: {
     display: 'inline-flex',

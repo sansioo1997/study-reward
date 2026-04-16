@@ -119,6 +119,19 @@ function getNowStr() {
   return getNow().toISOString().replace('T', ' ').slice(0, 19);
 }
 
+function isValidDateString(value) {
+  if (typeof value !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const t = new Date(`${value}T00:00:00+08:00`).getTime();
+  return Number.isFinite(t);
+}
+
+function isWeekendDate(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00+08:00`);
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
 function diffDays(dateA, dateB) {
   const dayMs = 24 * 60 * 60 * 1000;
   const a = new Date(`${dateA}T00:00:00+08:00`).getTime();
@@ -164,7 +177,8 @@ function recalculateStreak() {
   const latestDate = checkins[checkins.length - 1].date;
   const gapToToday = diffDays(latestDate, getToday());
   const currentStreak = gapToToday <= 1 ? tailRun : 0;
-  const ultimatePrizeClaimed = currentStreak >= 25 ? (existingStreak?.ultimate_prize_claimed || 0) : 0;
+  // Ultimate prize is based on TOTAL days now; once claimed it should never be reset.
+  const ultimatePrizeClaimed = existingStreak?.ultimate_prize_claimed || 0;
 
   runSql(
     'UPDATE streak SET current_streak = ?, max_streak = ?, total_days = ?, total_hours = ?, ultimate_prize_claimed = ? WHERE id = 1',
@@ -299,6 +313,87 @@ app.post('/api/checkin', authMiddleware, (req, res) => {
   }
 });
 
+// Make-up checkin (backfill) for any past date (including today if not checked-in yet).
+// Rule: if the date already has a checkin, it cannot be backfilled.
+app.post('/api/checkin/makeup', authMiddleware, (req, res) => {
+  try {
+    const { date, studyHours, mood, message } = req.body;
+
+    if (!isValidDateString(date)) {
+      return res.status(400).json({ error: '补卡日期不合法' });
+    }
+
+    // Disallow future dates
+    if (diffDays(date, getToday()) < 0) {
+      return res.status(400).json({ error: '不能补未来的日期' });
+    }
+
+    const existing = queryOne('SELECT * FROM checkins WHERE date = ?', [date]);
+    if (existing) {
+      return res.status(409).json({ error: '该日期已打卡，不能补卡' });
+    }
+
+    const hours = Number(studyHours);
+    if (!hours || hours <= 0 || hours > 24) {
+      return res.status(400).json({ error: '学习时长不合理' });
+    }
+
+    const isWeekend = isWeekendDate(date) ? 1 : 0;
+    let insertedId = 0;
+    try {
+      runSql(
+        'INSERT INTO checkins (date, study_hours, mood, message, is_weekend, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [date, hours, mood, message || '', isWeekend, getNowStr()]
+      );
+      // Use a deterministic lookup by date to get the id. `last_insert_rowid()` is not always reliable in sql.js.
+      const inserted = queryOne('SELECT id FROM checkins WHERE date = ?', [date]);
+      insertedId = Number(inserted?.id) || 0;
+    } catch (e) {
+      // Unique constraint safety net
+      if ((e.message || '').includes('UNIQUE') || (e.message || '').includes('unique')) {
+        return res.status(409).json({ error: '该日期已打卡，不能补卡' });
+      }
+      throw e;
+    }
+
+    if (!Number.isFinite(insertedId) || insertedId <= 0) {
+      return res.status(500).json({ error: '补卡创建失败，请重试' });
+    }
+
+    // Backfills can affect streak gaps; recalculate based on full history.
+    recalculateStreak();
+    const streak = queryOne('SELECT * FROM streak WHERE id = ?', [1]);
+
+    res.json({
+      success: true,
+      checkinId: insertedId,
+      date,
+      isWeekend,
+      streak: streak?.current_streak || 0,
+      totalDays: streak?.total_days || 0,
+      totalHours: streak?.total_hours || 0,
+    });
+  } catch (e) {
+    console.error('Makeup checkin error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Lightweight existence query for a given date (optional frontend pre-check).
+app.get('/api/records/by-date', authMiddleware, (req, res) => {
+  try {
+    const date = String(req.query.date || '');
+    if (!isValidDateString(date)) {
+      return res.status(400).json({ error: '日期不合法' });
+    }
+    const record = queryOne('SELECT * FROM checkins WHERE date = ?', [date]);
+    res.json({ record });
+  } catch (e) {
+    console.error('Record by date error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/lottery', authMiddleware, (req, res) => {
   try {
     const { checkinId } = req.body;
@@ -340,9 +435,9 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
     
     let prizeType, prizeDetail, amount;
     
-    if ((streak?.current_streak || 0) >= 25 && !streak?.ultimate_prize_claimed) {
+    if ((streak?.total_days || 0) >= 25 && !streak?.ultimate_prize_claimed) {
       prizeType = 'ultimate';
-      prizeDetail = '神秘大礼已解锁！连续打卡25天达成，值得被好好庆祝。';
+      prizeDetail = '神秘大礼已解锁！累计打卡25天达成，值得被好好庆祝。';
       amount = 2000;
       runSql('UPDATE streak SET ultimate_prize_claimed = 1 WHERE id = 1');
     } else {
