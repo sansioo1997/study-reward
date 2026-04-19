@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiArrowRight,
@@ -9,7 +9,6 @@ import {
   FiClock,
   FiGift,
   FiLayers,
-  FiMoon,
 } from 'react-icons/fi';
 import { HiMiniSparkles } from 'react-icons/hi2';
 import CatPet from '../components/CatPet';
@@ -17,113 +16,26 @@ import CheckinModal from '../components/CheckinModal';
 import LotteryWheel from '../components/LotteryWheel';
 import { useTheme } from '../utils/theme';
 
-const QUOTES = [
-  '路虽远，行则将至；事虽难，做则必成。',
-  '山重水复疑无路，柳暗花明又一村。',
-  '长风破浪会有时，直挂云帆济沧海。',
-  '千里之行，始于足下。',
-  '不积跬步，无以至千里；不积小流，无以成江海。',
-  '业精于勤，荒于嬉；行成于思，毁于随。',
-  '真正的伟大，是在认清生活之后依然热爱它。',
-  '世界以痛吻我，我却报之以歌。',
-  '愿你在反复打磨的日子里，依然保有温柔与笃定。',
-  '你今日埋下的每一粒种子，都会在未来长成光。',
-  '请相信那些安静积累的时刻，终会把你送往更远的地方。',
-  '纵有疾风起，人生不言弃。',
-  '愿你的坚持被时间温柔看见，愿你的努力终有回响。',
-  '苔花如米小，也学牡丹开。',
-  '把今天认真过好，就是给明天最好的答案。',
-  '少而定，多而惑。',
-  '日日行，不怕千万里。',
-  '心有所向，平凡的日子也会泛光。',
-  '再小的进步，都是向前。',
-  '先完成，再完美。',
-  '你不是慢，你是在扎根。',
-  '今日不敷衍，明日自有回答。',
-  '时间会奖励持续发光的人。',
-  '安静蓄力，也是一种力量。',
-  '每一次开始都值得鼓掌。',
-  '学会和昨天的自己比较。',
-  '一点点积累，会长成很远的路。',
-  '越是普通的日子，越要认真经营。',
-  '不必着急看见全部答案，先写好今天这一页。',
-  '把注意力放回当下，事情就会慢慢变顺。',
-  '勤能补拙，静能生慧。',
-  '当你没有退路时，前进就是答案。',
-  '坚持不是硬扛，是一次次重新出发。',
-  '今天多懂一点，明天就少慌一点。',
-  '你走得稳，已经很了不起。',
-  '别怕慢，怕的是停。',
-  '山有顶峰，湖有彼岸，慢慢来终有回甘。',
-  '认真是会发光的习惯。',
-  '你现在读过的每一页，都会在未来护住你。',
-  '每一个专注的小时，都在悄悄改变命运。',
-  '允许自己笨拙地开始。',
-  '不用一下子很厉害，先持续就很好。',
-  '努力不是为了证明给别人看，是为了成全自己。',
-  '心里有方向，脚下就有力量。',
-  '清醒、自律、知进退。',
-  '愿你手里的笔，写得出想去的远方。',
-  '把犹豫变成行动，路就会展开。',
-  '把一件小事做好，就是优秀的开始。',
-  '所有看似不起波澜的日复一日，终会让人看到坚持的意义。',
-  '你只管认真，时间自会作答。',
-  '今天的专注，会成为明天的底气。',
-  '去做会让未来的你感谢现在的事。',
-  '风会记得每一次用力生长。',
-  '现在辛苦一点，是为了以后拥有选择。',
-  '保持耐心，很多好事都在来的路上。',
-  '学习不是和别人赛跑，是让自己变宽阔。',
-  '你并不普通，你只是还在路上。',
-  '认真的人，自带光源。',
-  '把今天过充实，比想很多更重要。',
-  '前路未必坦荡，但你可以越来越强。',
-  '只要还在走，慢一点也没关系。',
-  '不负光阴，不负自己。',
-  '心定下来，路就清晰了。',
-  '每天进步一点，未来就会大不一样。',
-  '你付出的心力，都会有痕迹。',
-  '向内扎根，向上生长。',
-  '先把今天做好，明天自然会来。',
-  '熬得住无人问津，才等得到掌声。',
-  '读书、思考、行动，答案会慢慢靠近。',
-  '没有白走的路，也没有白读的书。',
-  '与其等待状态，不如先做五分钟。',
-  '当你开始行动，焦虑就会变小。',
-  '今天认真一点，明天从容一点。',
-  '不是看到了希望才坚持，是坚持了才更有希望。',
-  '把每次打卡，都当成和梦想的一次碰面。',
-  '愿你稳稳前进，也常常开心。',
-  '先赢过分心，再去赢过难题。',
-  '哪怕只学一点，也是在向上。',
-  '你的每一份努力，时间都偷偷记得。',
-  '保持热爱，奔赴山海。',
-  '慢慢学，反而学得深。',
-  '认真生活的人，终会被生活奖励。',
-  '把今天的心思，放进眼前这一件事里。',
-  '走得再慢，也比原地打转更接近答案。',
-  '你在为更好的自己铺路。',
-  '专注当下，就是最好的加速。',
-  '再坚持一下，很多改变都发生在后半程。',
-  '不要轻看今天，它正在决定以后。',
-  '读过的句子会忘，但形成的气质不会。',
-  '眼下的积累，终会变成未来的底牌。',
-  '所谓幸运，不过是准备遇见机会。',
-  '愿你被目标牵引，也被热爱托住。',
-  '学习的意义，是让你有能力选择想要的人生。',
-  '你不是在重复今天，你是在建设明天。',
-  '不怕路长，只怕心散。',
-  '静下来，世界会给你答案。',
-  '你能抵达的地方，往往始于一个认真今天。',
-  '每次没有放弃，都是在为自己加分。',
-  '朝着光走，影子会在后面。',
-  '愿你一步一步，把喜欢的生活走出来。',
-];
+function getNextQuote(items, currentQuote, preferredId) {
+  const normalized = Array.isArray(items)
+    ? items
+        .map((item) => ({
+          id: String(item?.id || '').trim(),
+          text: String(item?.text || '').trim(),
+        }))
+        .filter((item) => item.text)
+    : [];
+  if (normalized.length === 0) return '';
 
-function getNextQuote(currentQuote) {
-  const candidates = QUOTES.filter((quote) => quote !== currentQuote);
-  const pool = candidates.length > 0 ? candidates : QUOTES;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const preferredText =
+    normalized.find((item) => item.id && item.id === preferredId)?.text ||
+    normalized[0].text;
+
+  if (!currentQuote) return preferredText;
+
+  const candidates = normalized.map((item) => item.text).filter((quote) => quote !== currentQuote);
+  const pool = candidates.length > 0 ? candidates : normalized.map((item) => item.text);
+  return pool[Math.floor(Math.random() * pool.length)] || preferredText;
 }
 
 function formatDate(d) {
@@ -142,7 +54,7 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
   const [showLottery, setShowLottery] = useState(false);
   const [checkinResult, setCheckinResult] = useState(null);
   const [catMood, setCatMood] = useState('idle');
-  const [quote, setQuote] = useState(() => getNextQuote());
+  const [quote, setQuote] = useState('');
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 430,
     height: typeof window !== 'undefined' ? window.innerHeight : 932,
@@ -153,6 +65,11 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
 
   const dateInfo = formatDate();
   const todayChecked = stats?.todayCheckin;
+  const inspirationItems = useMemo(
+    () => (Array.isArray(stats?.inspirationItems) ? stats.inspirationItems : []),
+    [stats?.inspirationItems]
+  );
+  const preferredInspirationId = String(stats?.preferredInspirationId || '').trim();
   const statCards = [
     {
       key: 'streak',
@@ -199,6 +116,10 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
       window.visualViewport?.removeEventListener('resize', syncViewport);
     };
   }, []);
+
+  useEffect(() => {
+    setQuote(getNextQuote(inspirationItems, '', preferredInspirationId));
+  }, [inspirationItems, preferredInspirationId]);
 
   const isCompactViewport = viewport.width <= 390 || viewport.height <= 780;
   const isUltraCompactViewport = viewport.width <= 375 || viewport.height <= 720;
@@ -356,17 +277,8 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
                 ...(isCompactViewport ? styles.heroLabelCompact : null),
               }}
             >
-              <FiMoon size={14} />
-              <span>{todayChecked ? '今日记录已完成' : '继续积累今天的微光'}</span>
-            </div>
-            <div
-              style={{
-                ...styles.heroThemeBadge,
-                ...(isCompactViewport ? styles.heroThemeBadgeCompact : null),
-              }}
-            >
-              <span>{themeMeta[theme]?.icon || '🎨'}</span>
-              <span>{themeMeta[theme]?.label}</span>
+              <HiMiniSparkles size={14} />
+              <span>今日灵感</span>
             </div>
           </div>
           <div
@@ -376,25 +288,14 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
             }}
           >
             <div>
-              <h3
+              <p
                 style={{
-                  ...styles.heroTitle,
-                  ...(isCompactViewport ? styles.heroTitleCompact : null),
-                  ...(isUltraCompactViewport ? styles.heroTitleUltraCompact : null),
+                  ...styles.heroSubtitle,
+                  ...(isCompactViewport ? styles.heroSubtitleCompact : null),
                 }}
               >
-                每一次认真打卡，都在把理想写得更清晰
-              </h3>
-              {!isUltraCompactViewport && (
-                <p
-                  style={{
-                    ...styles.heroSubtitle,
-                    ...(isCompactViewport ? styles.heroSubtitleCompact : null),
-                  }}
-                >
-                  保留一点仪式感，让学习更值得期待。
-                </p>
-              )}
+                {quote || '请联系管理员配置今日灵感'}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -486,45 +387,6 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
           </div>
         </motion.div>
 
-        {/* Quote */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="glass-card"
-          style={{
-            ...styles.quoteCard,
-            ...(isCompactViewport ? styles.quoteCardCompact : null),
-          }}
-        >
-          <div style={styles.quoteHeader}>
-            <div
-              style={{
-                ...styles.quoteIconWrap,
-                ...(isCompactViewport ? styles.quoteIconWrapCompact : null),
-              }}
-            >
-              <HiMiniSparkles size={14} />
-            </div>
-            <span
-              style={{
-                ...styles.quoteLabel,
-                ...(isCompactViewport ? styles.quoteLabelCompact : null),
-              }}
-            >
-              今日灵感
-            </span>
-          </div>
-          <p
-            style={{
-              ...styles.quoteText,
-              ...(isCompactViewport ? styles.quoteTextCompact : null),
-            }}
-          >
-            {quote}
-          </p>
-        </motion.div>
-
         {/* Cat Pet Area */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -538,7 +400,9 @@ export default function HomePage({ stats, refreshStats, onNavigate }) {
         >
           <CatPet
             mood={catMood}
-            onInteract={() => setQuote((currentQuote) => getNextQuote(currentQuote))}
+            onInteract={() => {
+              setQuote((currentQuote) => getNextQuote(inspirationItems, currentQuote, preferredInspirationId));
+            }}
           />
         </motion.div>
 
@@ -900,15 +764,15 @@ const styles = {
     fontSize: 13,
   },
   heroSubtitle: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 1.45,
-    color: 'var(--text-secondary)',
+    marginTop: 0,
+    fontSize: 17,
+    lineHeight: 1.65,
+    fontWeight: 700,
+    color: 'var(--text-primary)',
   },
   heroSubtitleCompact: {
-    marginTop: 2,
-    fontSize: 10,
-    lineHeight: 1.25,
+    fontSize: 15,
+    lineHeight: 1.55,
   },
   statsRow: {
     display: 'grid',

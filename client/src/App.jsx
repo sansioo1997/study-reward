@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './utils/theme';
 import AuthPage from './pages/AuthPage';
+import AdminAuthPage from './pages/AdminAuthPage';
+import AdminPage from './pages/AdminPage';
 import HomePage from './pages/HomePage';
 import RecordsPage from './pages/RecordsPage';
 import { api } from './utils/api';
@@ -14,9 +16,23 @@ const pageVariants = {
 };
 
 function AppInner() {
+  const [routeMode, setRouteMode] = useState(() => (
+    typeof window !== 'undefined' && window.location.hash.startsWith('#/admin') ? 'admin' : 'user'
+  ));
   const [authenticated, setAuthenticated] = useState(api.isAuthenticated());
+  const [adminAuthenticated, setAdminAuthenticated] = useState(api.isAdminAuthenticated());
   const [currentPage, setCurrentPage] = useState('home');
   const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncRouteMode = () => {
+      setRouteMode(window.location.hash.startsWith('#/admin') ? 'admin' : 'user');
+    };
+    syncRouteMode();
+    window.addEventListener('hashchange', syncRouteMode);
+    return () => window.removeEventListener('hashchange', syncRouteMode);
+  }, []);
 
   const refreshStats = useCallback(async () => {
     if (!authenticated) return;
@@ -31,6 +47,35 @@ function AppInner() {
   useEffect(() => {
     if (authenticated && currentPage === 'home') refreshStats();
   }, [authenticated, currentPage, refreshStats]);
+
+  if (routeMode === 'admin') {
+    if (!adminAuthenticated) {
+      return (
+        <>
+          <StarryBackground />
+          <AdminAuthPage
+            onSuccess={() => setAdminAuthenticated(true)}
+            onBack={() => {
+              window.location.hash = '#/';
+            }}
+          />
+        </>
+      );
+    }
+
+    return (
+      <div style={{ height: '100%', position: 'relative' }}>
+        <StarryBackground />
+        <AdminPage
+          onExit={() => {
+            api.logoutAdmin();
+            setAdminAuthenticated(false);
+            window.location.hash = '#/';
+          }}
+        />
+      </div>
+    );
+  }
 
   if (!authenticated) {
     return (

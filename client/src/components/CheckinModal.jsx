@@ -42,6 +42,20 @@ function addDays(dateStr, delta) {
   return new Date(t + delta * dayMs).toISOString().split('T')[0];
 }
 
+function normalizeStudyHours(rawValue) {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) {
+    return { value: null, error: '' };
+  }
+  if (value > 12) {
+    return { value: 12, error: '小样 又想钻我漏洞' };
+  }
+  if (value <= 0) {
+    return { value: null, error: '' };
+  }
+  return { value, error: '' };
+}
+
 export default function CheckinModal({
   onClose,
   onComplete,
@@ -112,6 +126,10 @@ export default function CheckinModal({
   const handleSubmit = async () => {
     if (!studyHours || !selectedMood) return;
     if (isMakeup && !checkinDate) return;
+    if (studyHours > 12) {
+      setError('小样 又想钻我漏洞');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -323,15 +341,21 @@ export default function CheckinModal({
                 <input
                   type="number"
                   min="0.5"
-                  max="24"
+                  max="12"
                   step="0.5"
                   value={studyHours || ''}
-                  onChange={(e) => setStudyHours(Number(e.target.value))}
-                  placeholder="0.5~24"
+                  onChange={(e) => {
+                    const normalized = normalizeStudyHours(e.target.value);
+                    setStudyHours(normalized.value);
+                    setError(normalized.error);
+                  }}
+                  placeholder="0.5~12"
                   style={{ ...styles.customInput, ...(isCompactViewport ? styles.customInputCompact : null) }}
                 />
                 <span style={{ fontSize: isCompactViewport ? 12 : 13, color: 'var(--text-muted)' }}>小时</span>
               </div>
+
+              {error ? <p style={{ color: 'var(--danger)', fontSize: 13, textAlign: 'center' }}>{error}</p> : null}
 
               <motion.button
                 whileTap={{ scale: 0.95 }}

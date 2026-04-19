@@ -1,11 +1,17 @@
 const API_BASE = '/api';
 
 let authToken = localStorage.getItem('study_auth_token') || null;
+let adminToken = localStorage.getItem('study_admin_token') || null;
 
-async function request(url, options = {}) {
+async function request(url, options = {}, authMode = 'user') {
+  const tokenHeader =
+    authMode === 'admin'
+      ? (adminToken ? { 'x-admin-token': adminToken } : {})
+      : (authToken ? { 'x-auth-token': authToken } : {});
+
   const headers = {
     'Content-Type': 'application/json',
-    ...(authToken ? { 'x-auth-token': authToken } : {}),
+    ...tokenHeader,
     ...options.headers
   };
 
@@ -17,8 +23,13 @@ async function request(url, options = {}) {
   const data = await res.json();
   
   if (res.status === 401) {
-    localStorage.removeItem('study_auth_token');
-    authToken = null;
+    if (authMode === 'admin') {
+      localStorage.removeItem('study_admin_token');
+      adminToken = null;
+    } else {
+      localStorage.removeItem('study_auth_token');
+      authToken = null;
+    }
     window.location.reload();
     throw new Error('未授权');
   }
@@ -43,12 +54,28 @@ export const api = {
     }
     return data;
   },
+  verifyAdmin: async (passphrase) => {
+    const data = await request('/admin/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ passphrase })
+    });
+    if (data.success) {
+      adminToken = data.token;
+      localStorage.setItem('study_admin_token', data.token);
+    }
+    return data;
+  },
 
   isAuthenticated: () => !!authToken,
+  isAdminAuthenticated: () => !!adminToken,
 
   logout: () => {
     authToken = null;
     localStorage.removeItem('study_auth_token');
+  },
+  logoutAdmin: () => {
+    adminToken = null;
+    localStorage.removeItem('study_admin_token');
   },
 
   // Checkin
@@ -79,4 +106,18 @@ export const api = {
     request(`/records/${id}`, {
       method: 'DELETE'
     }),
+
+  // Admin
+  getAdminInspiration: () => request('/admin/inspiration', {}, 'admin'),
+  updateAdminInspiration: (items, preferredId) =>
+    request('/admin/inspiration', {
+      method: 'PUT',
+      body: JSON.stringify({ items, preferredId })
+    }, 'admin'),
+  getAdminGifts: () => request('/admin/gifts', {}, 'admin'),
+  updateAdminGiftStatus: (id, giftStatus) =>
+    request(`/admin/gifts/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ giftStatus })
+    }, 'admin'),
 };

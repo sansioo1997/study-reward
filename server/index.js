@@ -18,6 +18,14 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let db;
 
+function ensureColumn(tableName, columnName, definition) {
+  const columns = queryAll(`PRAGMA table_info(${tableName})`);
+  const exists = columns.some((column) => column.name === columnName);
+  if (!exists) {
+    db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
 async function initDB() {
   const SQL = await initSqlJs();
   
@@ -44,7 +52,13 @@ async function initDB() {
     prize_type TEXT NOT NULL,
     prize_detail TEXT,
     amount REAL,
+    gift_status TEXT,
     created_at TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS streak (
@@ -61,6 +75,14 @@ async function initDB() {
   if (count === 0) {
     db.run('INSERT INTO streak (id, current_streak, max_streak, total_days, total_hours, ultimate_prize_claimed) VALUES (1, 0, 0, 0, 0, 0)');
   }
+
+  ensureColumn('prizes', 'gift_status', 'TEXT');
+  db.run(`
+    UPDATE prizes
+    SET gift_status = '待发货'
+    WHERE gift_status IS NULL
+      AND prize_type IN ('blindbox', 'custom', 'ultimate')
+  `);
 
   recalculateStreak();
   saveDB();
@@ -105,6 +127,71 @@ function runSql(sql, params = []) {
     console.error('Run error:', sql, e.message);
     throw e;
   }
+}
+
+function getSetting(key, fallbackValue = null) {
+  const row = queryOne('SELECT value FROM app_settings WHERE key = ?', [key]);
+  return row?.value ?? fallbackValue;
+}
+
+function setSetting(key, value) {
+  const existing = queryOne('SELECT key FROM app_settings WHERE key = ?', [key]);
+  if (existing) {
+    runSql('UPDATE app_settings SET value = ? WHERE key = ?', [value, key]);
+  } else {
+    runSql('INSERT INTO app_settings (key, value) VALUES (?, ?)', [key, value]);
+  }
+}
+
+function normalizeInspirationItems(rawValue) {
+  if (!rawValue) return [];
+  try {
+    const parsed = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item, index) => {
+        if (typeof item === 'string') {
+          const text = item.trim();
+          return text ? { id: `legacy-${index + 1}`, text } : null;
+        }
+        const text = String(item?.text || '').trim();
+        const id = String(item?.id || '').trim() || `item-${index + 1}`;
+        return text ? { id, text } : null;
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function getInspirationConfig() {
+  let items = normalizeInspirationItems(getSetting('inspiration_items', '[]'));
+  let preferredId = String(getSetting('preferred_inspiration_id', '') || '').trim();
+
+  // Backward compatibility: migrate old single inspiration into the new list structure.
+  if (items.length === 0) {
+    const legacyValue = String(getSetting('today_inspiration', '') || '').trim();
+    if (legacyValue) {
+      items = [{ id: 'legacy-1', text: legacyValue }];
+      preferredId = 'legacy-1';
+      setSetting('inspiration_items', JSON.stringify(items));
+      setSetting('preferred_inspiration_id', preferredId);
+    }
+  }
+
+  if (preferredId && !items.some((item) => item.id === preferredId)) {
+    preferredId = items[0]?.id || '';
+  }
+
+  return { items, preferredId };
+}
+
+function saveInspirationConfig(items, preferredId) {
+  setSetting('inspiration_items', JSON.stringify(items));
+  setSetting('preferred_inspiration_id', preferredId || '');
+  // Keep legacy key aligned for compatibility with any old reads.
+  const preferredText = items.find((item) => item.id === preferredId)?.text || items[0]?.text || '';
+  setSetting('today_inspiration', preferredText);
 }
 
 function getNow() {
@@ -190,6 +277,9 @@ function recalculateStreak() {
 const SECRET_KEY = 'study_reward_2026_secret_key_x9k2m_v3';
 const PASSPHRASE_HASH = crypto.createHmac('sha256', SECRET_KEY).update('淡淡的顺顺的').digest('hex');
 const validTokens = new Map();
+const ADMIN_PASSPHRASE = process.env.ADMIN_PASSPHRASE || '我与我将重生';
+const ADMIN_PASSPHRASE_HASH = crypto.createHmac('sha256', SECRET_KEY).update(ADMIN_PASSPHRASE).digest('hex');
+const adminTokens = new Map();
 
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
@@ -203,6 +293,18 @@ function authMiddleware(req, res, next) {
   const token = req.headers['x-auth-token'];
   if (!token || !validTokens.has(token)) {
     return res.status(401).json({ error: '未授权访问' });
+  }
+  next();
+}
+
+function adminAuthMiddleware(req, res, next) {
+  const now = Date.now();
+  for (const [t, exp] of adminTokens) {
+    if (now > exp) adminTokens.delete(t);
+  }
+  const token = req.headers['x-admin-token'];
+  if (!token || !adminTokens.has(token)) {
+    return res.status(401).json({ error: '未授权访问管理后台' });
   }
   next();
 }
@@ -233,6 +335,26 @@ app.post('/api/auth/verify', (req, res) => {
   }
 });
 
+app.post('/api/admin/auth/verify', (req, res) => {
+  try {
+    const { passphrase } = req.body;
+    const inputHash = crypto.createHmac('sha256', SECRET_KEY).update(passphrase || '').digest('hex');
+
+    if (inputHash === ADMIN_PASSPHRASE_HASH) {
+      const token = generateToken();
+      adminTokens.set(token, Date.now() + 7 * 24 * 60 * 60 * 1000);
+      return res.json({ success: true, token });
+    }
+
+    setTimeout(() => {
+      res.status(403).json({ success: false, error: '管理员口令不正确' });
+    }, 600 + Math.random() * 600);
+  } catch (e) {
+    console.error('Admin auth error:', e);
+    res.status(500).json({ error: '管理员验证失败' });
+  }
+});
+
 app.get('/api/checkin/today', authMiddleware, (req, res) => {
   try {
     const today = getToday();
@@ -251,12 +373,20 @@ app.get('/api/stats', authMiddleware, (req, res) => {
     const recentCheckins = queryAll('SELECT * FROM checkins ORDER BY date DESC LIMIT 30');
     const today = getToday();
     const todayCheckin = queryOne('SELECT * FROM checkins WHERE date = ?', [today]);
+    const inspirationConfig = getInspirationConfig();
+    const preferredText =
+      inspirationConfig.items.find((item) => item.id === inspirationConfig.preferredId)?.text ||
+      inspirationConfig.items[0]?.text ||
+      '';
     
     res.json({
       streak: streak || { current_streak: 0, max_streak: 0, total_days: 0, total_hours: 0, ultimate_prize_claimed: 0 },
       recentCheckins,
       todayCheckin: !!todayCheckin,
-      today
+      today,
+      todayInspiration: preferredText,
+      inspirationItems: inspirationConfig.items,
+      preferredInspirationId: inspirationConfig.preferredId,
     });
   } catch (e) {
     console.error('Stats error:', e);
@@ -278,8 +408,8 @@ app.post('/api/checkin', authMiddleware, (req, res) => {
     }
 
     const hours = Number(studyHours);
-    if (!hours || hours <= 0 || hours > 24) {
-      return res.status(400).json({ error: '学习时长不合理' });
+    if (!hours || hours <= 0 || hours > 12) {
+      return res.status(400).json({ error: '小样 又想钻我漏洞' });
     }
 
     const result = runSql(
@@ -334,8 +464,8 @@ app.post('/api/checkin/makeup', authMiddleware, (req, res) => {
     }
 
     const hours = Number(studyHours);
-    if (!hours || hours <= 0 || hours > 24) {
-      return res.status(400).json({ error: '学习时长不合理' });
+    if (!hours || hours <= 0 || hours > 12) {
+      return res.status(400).json({ error: '小样 又想钻我漏洞' });
     }
 
     const isWeekend = isWeekendDate(date) ? 1 : 0;
@@ -433,12 +563,13 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
 
     const streak = queryOne('SELECT * FROM streak WHERE id = ?', [1]);
     
-    let prizeType, prizeDetail, amount;
+    let prizeType, prizeDetail, amount, giftStatus = null;
     
     if ((streak?.total_days || 0) >= 25 && !streak?.ultimate_prize_claimed) {
       prizeType = 'ultimate';
       prizeDetail = '神秘大礼已解锁！累计打卡25天达成，值得被好好庆祝。';
       amount = 2000;
+      giftStatus = '待发货';
       runSql('UPDATE streak SET ultimate_prize_claimed = 1 WHERE id = 1');
     } else {
       const rand = Math.random() * 100;
@@ -447,22 +578,24 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
         prizeType = 'custom';
         prizeDetail = '自选奖品！500元以内心愿单任你填！';
         amount = 500;
+        giftStatus = '待发货';
       } else if (rand < 25) {
         prizeType = 'blindbox';
         prizeDetail = '盲盒奖品！等待拆开惊喜盲盒！';
         amount = 0;
+        giftStatus = '待发货';
       } else {
         prizeType = 'cash';
         const hrs = Number(checkin.study_hours) || 1;
-        const multiplier = 1 + Math.random() * 0.8;
-        amount = Math.max(1, Math.round(25 * hrs * multiplier));
+        const multiplier = 1 + Math.random() * 0.5;
+        amount = Math.max(1, Math.round(20 * hrs * multiplier));
         prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
       }
     }
 
     runSql(
-      'INSERT INTO prizes (checkin_id, prize_type, prize_detail, amount, created_at) VALUES (?, ?, ?, ?, ?)',
-      [effectiveCheckinId, prizeType, prizeDetail, amount, getNowStr()]
+      'INSERT INTO prizes (checkin_id, prize_type, prize_detail, amount, gift_status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [effectiveCheckinId, prizeType, prizeDetail, amount, giftStatus, getNowStr()]
     );
 
     res.json({ prizeType, prizeDetail, amount, streak: streak?.current_streak || 0 });
@@ -475,7 +608,7 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
 app.get('/api/records', authMiddleware, (req, res) => {
   try {
     const records = queryAll(`
-      SELECT c.*, p.prize_type, p.prize_detail, p.amount as prize_amount
+      SELECT c.*, p.prize_type, p.prize_detail, p.amount as prize_amount, p.gift_status
       FROM checkins c
       LEFT JOIN prizes p ON c.id = p.checkin_id
       ORDER BY c.date DESC
@@ -483,6 +616,101 @@ app.get('/api/records', authMiddleware, (req, res) => {
     res.json({ records });
   } catch (e) {
     console.error('Records error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/inspiration', adminAuthMiddleware, (req, res) => {
+  try {
+    const config = getInspirationConfig();
+    res.json(config);
+  } catch (e) {
+    console.error('Admin inspiration get error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/admin/inspiration', adminAuthMiddleware, (req, res) => {
+  try {
+    const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+    const items = rawItems
+      .map((item, index) => {
+        const text = String(item?.text || '').trim();
+        const id = String(item?.id || '').trim() || `admin-${index + 1}-${Date.now()}`;
+        return text ? { id, text } : null;
+      })
+      .filter(Boolean);
+
+    if (items.some((item) => item.text.length > 240)) {
+      return res.status(400).json({ error: '单条灵感最多 240 个字符' });
+    }
+
+    let preferredId = String(req.body?.preferredId || '').trim();
+    if (preferredId && !items.some((item) => item.id === preferredId)) {
+      return res.status(400).json({ error: '默认优先展示项不存在' });
+    }
+    if (!preferredId && items.length > 0) {
+      preferredId = items[0].id;
+    }
+
+    saveInspirationConfig(items, preferredId);
+    res.json({ success: true, items, preferredId });
+  } catch (e) {
+    console.error('Admin inspiration update error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/gifts', adminAuthMiddleware, (req, res) => {
+  try {
+    const gifts = queryAll(`
+      SELECT
+        p.id,
+        p.checkin_id,
+        p.prize_type,
+        p.prize_detail,
+        p.amount,
+        p.gift_status,
+        p.created_at,
+        c.date,
+        c.study_hours,
+        c.mood,
+        c.message
+      FROM prizes p
+      LEFT JOIN checkins c ON c.id = p.checkin_id
+      WHERE p.prize_type IN ('blindbox', 'custom', 'ultimate')
+      ORDER BY p.created_at DESC, p.id DESC
+    `);
+    res.json({ gifts });
+  } catch (e) {
+    console.error('Admin gifts error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/api/admin/gifts/:id/status', adminAuthMiddleware, (req, res) => {
+  try {
+    const giftId = Number(req.params.id);
+    const giftStatus = String(req.body?.giftStatus || '').trim();
+    const ALLOWED_GIFT_STATUSES = ['待发货', '发货中', '已完成'];
+
+    if (!Number.isFinite(giftId) || giftId <= 0) {
+      return res.status(400).json({ error: '礼物 ID 无效' });
+    }
+    if (!ALLOWED_GIFT_STATUSES.includes(giftStatus)) {
+      return res.status(400).json({ error: '礼物状态不合法' });
+    }
+
+    const gift = queryOne('SELECT * FROM prizes WHERE id = ?', [giftId]);
+    if (!gift || !['blindbox', 'custom', 'ultimate'].includes(gift.prize_type)) {
+      return res.status(404).json({ error: '礼物记录不存在' });
+    }
+
+    runSql('UPDATE prizes SET gift_status = ? WHERE id = ?', [giftStatus, giftId]);
+    const updated = queryOne('SELECT * FROM prizes WHERE id = ?', [giftId]);
+    res.json({ success: true, gift: updated });
+  } catch (e) {
+    console.error('Admin gift status update error:', e);
     res.status(500).json({ error: e.message });
   }
 });

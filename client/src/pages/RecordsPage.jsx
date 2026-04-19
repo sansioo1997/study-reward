@@ -22,6 +22,12 @@ const PRIZE_TAGS = {
   ultimate: { label: '神秘大礼', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
 };
 
+const GIFT_STATUS_TAGS = {
+  '待发货': { color: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
+  '发货中': { color: '#60a5fa', bg: 'rgba(96,165,250,0.16)' },
+  '已完成': { color: '#34d399', bg: 'rgba(52,211,153,0.16)' },
+};
+
 const MOOD_EMOJIS = {
   happy: '😊',
   fighting: '😤',
@@ -235,15 +241,27 @@ export default function RecordsPage({ onBack }) {
                   </div>
                   <div style={styles.recordRight}>
                     {record.prize_type && (
-                      <span style={{
-                        ...styles.prizeTag,
-                        ...(isCompactViewport ? styles.prizeTagCompact : null),
-                        color: PRIZE_TAGS[record.prize_type]?.color,
-                        background: PRIZE_TAGS[record.prize_type]?.bg,
-                      }}>
-                        {PRIZE_TAGS[record.prize_type]?.label}
-                        {record.prize_amount && record.prize_type !== 'ultimate' ? ` ¥${record.prize_amount}` : ''}
-                      </span>
+                      <div style={styles.tagGroup}>
+                        <span style={{
+                          ...styles.prizeTag,
+                          ...(isCompactViewport ? styles.prizeTagCompact : null),
+                          color: PRIZE_TAGS[record.prize_type]?.color,
+                          background: PRIZE_TAGS[record.prize_type]?.bg,
+                        }}>
+                          {PRIZE_TAGS[record.prize_type]?.label}
+                          {record.prize_amount && record.prize_type !== 'ultimate' ? ` ¥${record.prize_amount}` : ''}
+                        </span>
+                        {record.gift_status && ['blindbox', 'custom', 'ultimate'].includes(record.prize_type) && (
+                          <span style={{
+                            ...styles.statusTag,
+                            ...(isCompactViewport ? styles.prizeTagCompact : null),
+                            color: GIFT_STATUS_TAGS[record.gift_status]?.color || '#94a3b8',
+                            background: GIFT_STATUS_TAGS[record.gift_status]?.bg || 'rgba(148,163,184,0.16)',
+                          }}>
+                            {record.gift_status}
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {!record.prize_type && (
@@ -270,6 +288,11 @@ export default function RecordsPage({ onBack }) {
                     )}
                     {record.prize_detail && (
                       <p style={{ ...styles.prizeDetailText, ...(isCompactViewport ? styles.messageTextCompact : null) }}>{record.prize_detail}</p>
+                    )}
+                    {record.gift_status && ['blindbox', 'custom', 'ultimate'].includes(record.prize_type) && (
+                      <p style={{ ...styles.statusText, ...(isCompactViewport ? styles.messageTextCompact : null) }}>
+                        礼物进度：{record.gift_status}
+                      </p>
                     )}
                     {!record.prize_type && (
                       <button
@@ -584,10 +607,22 @@ const styles = {
     gap: 8,
     marginLeft: 'auto',
   },
+  tagGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
   prizeTag: {
     fontSize: 12,
     fontWeight: 700,
     padding: '4px 10px',
+    borderRadius: 8,
+  },
+  statusTag: {
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '3px 8px',
     borderRadius: 8,
   },
   prizeTagCompact: {
@@ -643,6 +678,12 @@ const styles = {
     fontSize: 13,
     color: 'var(--text-secondary)',
     marginBottom: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    color: 'var(--text-secondary)',
+    marginBottom: 8,
+    fontWeight: 700,
   },
   reopenLotteryBtn: {
     marginBottom: 10,
