@@ -587,8 +587,8 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
       } else {
         prizeType = 'cash';
         const hrs = Number(checkin.study_hours) || 1;
-        const multiplier = 1 + Math.random() * 0.5;
-        amount = Math.max(1, Math.round(20 * hrs * multiplier));
+        const multiplier = 1 + Math.random() * 0.8;
+        amount = Math.max(1, Math.round(25 * hrs * multiplier));
         prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
       }
     }
