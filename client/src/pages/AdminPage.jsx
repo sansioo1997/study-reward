@@ -4,6 +4,12 @@ import { FiArrowLeft, FiGift, FiPlus, FiSave, FiShield, FiTrash2, FiTruck } from
 import { api } from '../utils/api';
 
 const GIFT_STATUS_OPTIONS = ['待发货', '发货中', '已完成'];
+const PRIZE_MODE_OPTIONS = [
+  { value: 'random', label: '随机策略', desc: '保持当前随机抽奖逻辑' },
+  { value: 'cash', label: '固定现金', desc: '每次抽奖都发固定现金金额' },
+  { value: 'blindbox', label: '必中盲盒', desc: '每次抽奖都开出盲盒' },
+  { value: 'custom', label: '必中自选奖品', desc: '每次抽奖都开出自选奖品' },
+];
 const PRIZE_LABELS = {
   custom: '自选奖品',
   blindbox: '盲盒',
@@ -14,18 +20,26 @@ export default function AdminPage({ onExit }) {
   const [inspirationItems, setInspirationItems] = useState([]);
   const [preferredId, setPreferredId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [prizeMode, setPrizeMode] = useState('random');
+  const [cashAmount, setCashAmount] = useState('');
+  const [savingPrizeConfig, setSavingPrizeConfig] = useState(false);
+  const [prizeConfigMessage, setPrizeConfigMessage] = useState('');
+  const [prizeConfigError, setPrizeConfigError] = useState('');
   const [gifts, setGifts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [inspirationData, giftsData] = await Promise.all([
+      const [inspirationData, prizeConfigData, giftsData] = await Promise.all([
         api.getAdminInspiration(),
+        api.getAdminPrizeConfig(),
         api.getAdminGifts(),
       ]);
       setInspirationItems(inspirationData.items || []);
       setPreferredId(inspirationData.preferredId || '');
+      setPrizeMode(prizeConfigData.mode || 'random');
+      setCashAmount(prizeConfigData.cashAmount ? String(prizeConfigData.cashAmount) : '');
       setGifts(giftsData.gifts || []);
     } finally {
       setLoading(false);
@@ -85,6 +99,34 @@ export default function AdminPage({ onExit }) {
   const handleUpdateGift = async (id, giftStatus) => {
     const data = await api.updateAdminGiftStatus(id, giftStatus);
     setGifts((items) => items.map((item) => (item.id === id ? { ...item, ...data.gift } : item)));
+  };
+
+  const handleSavePrizeConfig = async () => {
+    setPrizeConfigError('');
+    setPrizeConfigMessage('');
+
+    if (prizeMode === 'cash') {
+      const amount = Number(cashAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setPrizeConfigError('请先填写大于 0 的固定现金金额');
+        return;
+      }
+    }
+
+    setSavingPrizeConfig(true);
+    try {
+      const data = await api.updateAdminPrizeConfig(
+        prizeMode,
+        prizeMode === 'cash' ? Number(cashAmount) : null
+      );
+      setPrizeMode(data.mode || 'random');
+      setCashAmount(data.cashAmount ? String(data.cashAmount) : '');
+      setPrizeConfigMessage('奖品设置已保存');
+    } catch (e) {
+      setPrizeConfigError(e.message || '保存失败');
+    } finally {
+      setSavingPrizeConfig(false);
+    }
   };
 
   return (
@@ -159,6 +201,67 @@ export default function AdminPage({ onExit }) {
         )}
       </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card" style={styles.card}>
+        <div style={styles.cardHead}>
+          <div>
+            <h2 style={styles.cardTitle}>奖品设置</h2>
+            <p style={styles.cardDesc}>可指定固定现金金额、必中盲盒或必中自选奖品；不设置时保留当前随机策略。</p>
+          </div>
+        </div>
+        <div style={styles.prizeModeList}>
+          {PRIZE_MODE_OPTIONS.map((option) => (
+            <label key={option.value} style={styles.prizeModeCard}>
+              <div style={styles.radioWrap}>
+                <input
+                  type="radio"
+                  name="prize-mode"
+                  checked={prizeMode === option.value}
+                  onChange={() => {
+                    setPrizeMode(option.value);
+                    setPrizeConfigError('');
+                    setPrizeConfigMessage('');
+                  }}
+                />
+                <span>{option.label}</span>
+              </div>
+              <span style={styles.prizeModeDesc}>{option.desc}</span>
+            </label>
+          ))}
+        </div>
+        {prizeMode === 'cash' && (
+          <div style={styles.cashInputWrap}>
+            <span style={styles.cashLabel}>固定现金金额</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={cashAmount}
+              onChange={(e) => {
+                setCashAmount(e.target.value);
+                setPrizeConfigError('');
+                setPrizeConfigMessage('');
+              }}
+              placeholder="输入固定现金金额"
+              style={styles.cashInput}
+            />
+          </div>
+        )}
+        {prizeConfigError ? <p style={styles.errorText}>{prizeConfigError}</p> : null}
+        {prizeConfigMessage ? <p style={styles.successText}>{prizeConfigMessage}</p> : null}
+        <div style={styles.cardFooter}>
+          <span style={styles.savedTip}>
+            当前策略：
+            {prizeMode === 'cash'
+              ? `固定现金 ¥${cashAmount || '--'}`
+              : (PRIZE_MODE_OPTIONS.find((item) => item.value === prizeMode)?.label || '随机策略')}
+          </span>
+          <button type="button" onClick={handleSavePrizeConfig} style={{ ...styles.primaryBtn, opacity: savingPrizeConfig ? 0.6 : 1 }}>
+            <FiSave size={15} />
+            <span>{savingPrizeConfig ? '保存中...' : '保存奖品设置'}</span>
+          </button>
+        </div>
+      </motion.div>
+
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} style={styles.summaryRow}>
         {GIFT_STATUS_OPTIONS.map((status) => (
           <div key={status} className="glass-card" style={styles.summaryCard}>
@@ -221,11 +324,13 @@ export default function AdminPage({ onExit }) {
 
 const styles = {
   page: {
-    minHeight: '100%',
+    height: '100%',
     padding: 'calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 20px)',
     position: 'relative',
     zIndex: 1,
     overflowY: 'auto',
+    overscrollBehavior: 'contain',
+    WebkitOverflowScrolling: 'touch',
   },
   header: {
     display: 'flex',
@@ -366,6 +471,60 @@ const styles = {
     fontSize: 12,
     color: 'var(--text-secondary)',
     lineHeight: 1.5,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: 'var(--danger)',
+    lineHeight: 1.5,
+    fontWeight: 700,
+  },
+  successText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: 'var(--success, #34d399)',
+    lineHeight: 1.5,
+    fontWeight: 700,
+  },
+  prizeModeList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  prizeModeCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    padding: '12px',
+    borderRadius: 16,
+    border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.04)',
+  },
+  prizeModeDesc: {
+    fontSize: 12,
+    lineHeight: 1.5,
+    color: 'var(--text-muted)',
+  },
+  cashInputWrap: {
+    marginTop: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  cashLabel: {
+    fontSize: 12,
+    color: 'var(--text-secondary)',
+    fontWeight: 700,
+  },
+  cashInput: {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 14,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-card)',
+    color: 'var(--text-primary)',
+    fontSize: 14,
+    fontWeight: 700,
   },
   summaryRow: {
     display: 'grid',

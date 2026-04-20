@@ -194,6 +194,33 @@ function saveInspirationConfig(items, preferredId) {
   setSetting('today_inspiration', preferredText);
 }
 
+function getPrizeConfig() {
+  let mode = String(getSetting('prize_mode', 'random') || 'random').trim();
+  if (!['random', 'cash', 'blindbox', 'custom'].includes(mode)) {
+    mode = 'random';
+  }
+
+  const rawCashAmount = String(getSetting('prize_cash_amount', '') || '').trim();
+  const parsedCashAmount = Number(rawCashAmount);
+  const cashAmount =
+    rawCashAmount && Number.isFinite(parsedCashAmount) && parsedCashAmount > 0
+      ? Math.round(parsedCashAmount)
+      : null;
+
+  return { mode, cashAmount };
+}
+
+function savePrizeConfig(mode, cashAmount) {
+  const safeMode = ['random', 'cash', 'blindbox', 'custom'].includes(mode) ? mode : 'random';
+  const safeCashAmount =
+    safeMode === 'cash' && Number.isFinite(Number(cashAmount)) && Number(cashAmount) > 0
+      ? String(Math.round(Number(cashAmount)))
+      : '';
+
+  setSetting('prize_mode', safeMode);
+  setSetting('prize_cash_amount', safeCashAmount);
+}
+
 function getNow() {
   return new Date(Date.now() + 8 * 60 * 60 * 1000);
 }
@@ -562,6 +589,7 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
     }
 
     const streak = queryOne('SELECT * FROM streak WHERE id = ?', [1]);
+    const prizeConfig = getPrizeConfig();
     
     let prizeType, prizeDetail, amount, giftStatus = null;
     
@@ -572,24 +600,40 @@ app.post('/api/lottery', authMiddleware, (req, res) => {
       giftStatus = '待发货';
       runSql('UPDATE streak SET ultimate_prize_claimed = 1 WHERE id = 1');
     } else {
-      const rand = Math.random() * 100;
-      
-      if (rand < 10) {
+      if (prizeConfig.mode === 'custom') {
         prizeType = 'custom';
         prizeDetail = '自选奖品！500元以内心愿单任你填！';
         amount = 500;
         giftStatus = '待发货';
-      } else if (rand < 25) {
+      } else if (prizeConfig.mode === 'blindbox') {
         prizeType = 'blindbox';
         prizeDetail = '盲盒奖品！等待拆开惊喜盲盒！';
         amount = 0;
         giftStatus = '待发货';
-      } else {
+      } else if (prizeConfig.mode === 'cash') {
         prizeType = 'cash';
-        const hrs = Number(checkin.study_hours) || 1;
-        const multiplier = 1 + Math.random() * 0.8;
-        amount = Math.max(1, Math.round(25 * hrs * multiplier));
-        prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
+        amount = Math.max(1, Math.round(Number(prizeConfig.cashAmount) || 0));
+        prizeDetail = '固定现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
+      } else {
+        const rand = Math.random() * 100;
+
+        if (rand < 10) {
+          prizeType = 'custom';
+          prizeDetail = '自选奖品！500元以内心愿单任你填！';
+          amount = 500;
+          giftStatus = '待发货';
+        } else if (rand < 25) {
+          prizeType = 'blindbox';
+          prizeDetail = '盲盒奖品！等待拆开惊喜盲盒！';
+          amount = 0;
+          giftStatus = '待发货';
+        } else {
+          prizeType = 'cash';
+          const hrs = Number(checkin.study_hours) || 1;
+          const multiplier = 1 + Math.random() * 0.8;
+          amount = Math.max(1, Math.round(25 * hrs * multiplier));
+          prizeDetail = '现金奖励 ' + amount + ' 元已解锁，今天的认真很值得。';
+        }
       }
     }
 
@@ -657,6 +701,39 @@ app.put('/api/admin/inspiration', adminAuthMiddleware, (req, res) => {
     res.json({ success: true, items, preferredId });
   } catch (e) {
     console.error('Admin inspiration update error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/prize-config', adminAuthMiddleware, (req, res) => {
+  try {
+    res.json(getPrizeConfig());
+  } catch (e) {
+    console.error('Admin prize config get error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/admin/prize-config', adminAuthMiddleware, (req, res) => {
+  try {
+    const mode = String(req.body?.mode || 'random').trim();
+    const cashAmount = req.body?.cashAmount;
+
+    if (!['random', 'cash', 'blindbox', 'custom'].includes(mode)) {
+      return res.status(400).json({ error: '奖品策略不合法' });
+    }
+
+    if (mode === 'cash') {
+      const amount = Number(cashAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: '固定现金金额必须大于 0' });
+      }
+    }
+
+    savePrizeConfig(mode, cashAmount);
+    res.json({ success: true, ...getPrizeConfig() });
+  } catch (e) {
+    console.error('Admin prize config update error:', e);
     res.status(500).json({ error: e.message });
   }
 });

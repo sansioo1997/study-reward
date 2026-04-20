@@ -64,7 +64,7 @@ function AppInner() {
     }
 
     return (
-      <div style={{ height: '100%', position: 'relative' }}>
+      <div style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
         <StarryBackground />
         <AdminPage
           onExit={() => {

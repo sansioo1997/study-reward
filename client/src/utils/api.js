@@ -114,6 +114,12 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ items, preferredId })
     }, 'admin'),
+  getAdminPrizeConfig: () => request('/admin/prize-config', {}, 'admin'),
+  updateAdminPrizeConfig: (mode, cashAmount) =>
+    request('/admin/prize-config', {
+      method: 'PUT',
+      body: JSON.stringify({ mode, cashAmount })
+    }, 'admin'),
   getAdminGifts: () => request('/admin/gifts', {}, 'admin'),
   updateAdminGiftStatus: (id, giftStatus) =>
     request(`/admin/gifts/${id}/status`, {
